@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pixel Fantasy MMORPG - Real Multiplayer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4a0404;
+            --secondary: #d4af37;
+            --bg-dark: #1a1a2e;
+            --panel-bg: rgba(20, 20, 35, 0.95);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+        .rpg-panel {
+            background: var(--panel-bg);
+            border: 4px solid #3a3a5c;
+            border-image: linear-gradient(to bottom right, #4a4a7a, #1a1a2e) 1;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .rpg-btn {
+            background: linear-gradient(to bottom, #4a0404, #2a0202);
+            border: 2px solid #8a0808;
+            color: #d4af37;
+            text-shadow: 2px 2px 0px #000;
+            transition: all 0.1s;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .rpg-btn:hover { background: linear-gradient(to bottom, #6a0606, #4a0404); border-color: #d4af37; transform: scale(1.02); }
+        .rpg-btn:active { transform: scale(0.98); }
+        .rpg-btn:disabled { filter: grayscale(1); cursor: not-allowed; transform: none; }
+
+        .rpg-input {
+            background: #0f0f1a;
+            border: 2px solid #4a4a7a;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8rem;
+        }
+        .rpg-input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
+
+        .bar-container { background: #222; border: 2px solid #555; height: 18px; position: relative; overflow: hidden; }
+        .hp-bar { background: linear-gradient(to right, #ff0000, #cc0000); height: 100%; transition: width 0.1s linear; }
+        .mp-bar { background: linear-gradient(to right, #0055ff, #0033cc); height: 100%; transition: width 0.1s linear; }
+        .exp-bar { background: linear-gradient(to right, #ffd700, #b8860b); height: 100%; transition: width 0.2s; }
+        .bar-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.55rem; text-shadow: 1px 1px 0 #000; z-index: 10; white-space: nowrap; }
+
+        .inv-slot { width: 45px; height: 45px; background: rgba(0,0,0,0.7); border: 2px solid #4a4a7a; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px #000; }
+
+        .skill-icon { width: 40px; height: 40px; border: 2px solid #d4af37; background: #222; position: relative; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
+        .skill-cooldown { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; font-size: 0.7rem; display: none; color: white; }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background-image: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover; background-position: center; z-index: 50;
+        }
+        .hidden { display: none !important; }
+
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .ui-element { pointer-events: auto; }
+
+        .floating-text { position: absolute; font-size: 0.8rem; font-weight: bold; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 20;}
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-40px) scale(1.2); } }
+
+        /* Mobile Controls Styling */
+        .mobile-btn {
+            background: rgba(30, 30, 50, 0.85); border: 3px solid #5a5a8a; border-radius: 50%;
+            color: white; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.7), inset 0 0 10px rgba(255,255,255,0.2); font-weight: bold; transition: transform 0.05s;
+            user-select: none; -webkit-user-select: none;
+        }
+        .mobile-btn:active { transform: scale(0.85); background: rgba(50, 50, 80, 0.95); }
+        
+        /* Strict Device Separation */
+        @media (pointer: fine) {
+            #mobile-ui { display: none !important; }
+            #desktop-hints { display: flex !important; }
+        }
+        @media (pointer: coarse), (max-width: 768px) {
+            #mobile-ui { display: block !important; }
+            #desktop-hints { display: none !important; }
+            .desktop-only { display: none !important; }
+            #chat-box { width: 220px !important; height: 120px !important; opacity: 0.8; }
+            #chat-input { display: none; } /* Use custom prompt for mobile chat */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="relative w-full h-full">
+
+        <!-- AUTH SCREEN -->
+        <div id="auth-screen" class="screen">
+            <h1 class="text-4xl md:text-6xl text-yellow-500 mb-8 text-center leading-relaxed" style="text-shadow: 4px 4px 0 #4a0404;">PIXEL FANTASY<br><span class="text-2xl md:text-3xl text-white">MMORPG</span></h1>
+            <div class="rpg-panel p-8 w-[400px] flex flex-col gap-4 items-center max-w-[90%]">
+                <p class="text-xs text-gray-300 text-center mb-4 leading-relaxed">Real-time Multiplayer via Invite Code.<br>Synced via Firebase.</p>
+                <button id="btn-google-login" class="rpg-btn p-4 w-full text-xs flex items-center justify-center gap-3">
+                    <div class="bg-white p-1 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    </div>
+                    <span>SIGN IN WITH GOOGLE</span>
+                </button>
+                <p id="auth-msg" class="text-red-500 text-[10px] text-center h-4 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- LOBBY SCREEN -->
+        <div id="lobby-screen" class="screen hidden">
+            <div class="absolute top-4 right-4 flex items-center gap-4">
+                <span id="player-email-display" class="text-xs text-gray-300 hidden md:block"></span>
+                <button id="btn-logout" class="rpg-btn px-4 py-2 text-xs">LOGOUT</button>
+            </div>
+            <h2 class="text-3xl md:text-4xl text-yellow-500 mb-12" style="text-shadow: 3px 3px 0 #000;">MULTIPLAYER LOBBY</h2>
+            
+            <div class="flex flex-col md:flex-row gap-8 max-w-[90%]">
+                <div class="rpg-panel p-8 w-80 flex flex-col items-center gap-4">
+                    <div class="text-5xl mb-2">🌍</div>
+                    <h3 class="text-xl text-yellow-400">CREATE WORLD</h3>
+                    <p class="text-[10px] text-center text-gray-400 leading-relaxed h-10">Host a new multiplayer room and get an Invite Code.</p>
+                    <input type="text" id="new-world-name" placeholder="World Name" class="rpg-input p-3 w-full text-center text-xs">
+                    <button id="btn-create-world" class="rpg-btn p-4 w-full text-xs">CREATE & GET CODE</button>
+                    <p id="create-msg" class="text-yellow-500 text-[10px] text-center h-4"></p>
+                </div>
+
+                <div class="rpg-panel p-8 w-80 flex flex-col items-center gap-4">
+                    <div class="text-5xl mb-2">🤝</div>
+                    <h3 class="text-xl text-blue-400">JOIN WORLD</h3>
+                    <p class="text-[10px] text-center text-gray-400 leading-relaxed h-10">Enter a 6-digit Invite Code from your friend.</p>
+                    <input type="text" id="join-invite-code" placeholder="ENTER CODE" class="rpg-input p-3 w-full text-center text-lg uppercase tracking-widest font-bold" maxlength="6">
+                    <button id="btn-join-world" class="rpg-btn p-4 w-full text-xs border-blue-500 text-blue-300">JOIN ROOM</button>
+                    <p id="join-msg" class="text-red-500 text-[10px] text-center h-4"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARACTER CREATION SCREEN -->
+        <div id="char-screen" class="screen hidden">
+            <h2 class="text-3xl md:text-4xl text-yellow-500 mb-8" style="text-shadow: 3px 3px 0 #000;">CREATE CHARACTER</h2>
+            <div class="flex flex-col md:flex-row gap-6 md:gap-8 max-h-[60vh] overflow-y-auto md:overflow-visible p-4">
+                <div class="rpg-panel p-6 w-72 flex flex-col items-center cursor-pointer border-4 border-transparent hover:border-yellow-500 transition-colors" id="select-knight">
+                    <img src="https://i.ibb.co.com/7d4SgNtS/b59766b757572f2602678f3e274eacd9-removebg-preview.png" alt="Knight" class="h-40 md:h-48 object-contain mb-4 filter drop-shadow-lg">
+                    <h3 class="text-xl text-red-400 mb-2">KNIGHT</h3>
+                    <ul class="text-[10px] text-gray-300 text-left w-full list-disc pl-4 leading-loose">
+                        <li>High Melee Damage & Defense</li>
+                        <li>Skills: Slash, Smash, Warcry</li>
+                    </ul>
+                </div>
+                <div class="rpg-panel p-6 w-72 flex flex-col items-center cursor-pointer border-4 border-transparent hover:border-yellow-500 transition-colors" id="select-mage">
+                    <img src="https://i.ibb.co.com/XxmBdS4t/Avatars-In-Pixels-removebg-preview.png" alt="Mage" class="h-40 md:h-48 object-contain mb-4 filter drop-shadow-lg">
+                    <h3 class="text-xl text-blue-400 mb-2">MAGE</h3>
+                    <ul class="text-[10px] text-gray-300 text-left w-full list-disc pl-4 leading-loose">
+                        <li>Magic Damage & Support</li>
+                        <li>Skills: Heal, Burst, Blessing</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col md:flex-row gap-4 items-center">
+                <input type="text" id="char-name" placeholder="Character Name" class="rpg-input p-4 w-72 text-center text-sm">
+                <button id="btn-start-game" class="rpg-btn p-4 px-10 text-sm">ENTER WORLD</button>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="game-screen" class="hidden w-full h-full relative bg-black">
+            <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+            <div id="floating-text-container" class="absolute top-0 left-0 w-full h-full pointer-events-none z-20"></div>
+
+            <!-- Mobile Specific UI (Only visible on touch devices) -->
+            <div id="mobile-ui" class="hidden absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                <!-- Joystick -->
+                <div id="joystick-container" class="absolute bottom-8 left-8 w-36 h-36 bg-gray-900/60 rounded-full border-4 border-gray-600 pointer-events-auto backdrop-blur-sm" style="touch-action: none;">
+                    <div id="joystick-knob" class="absolute top-1/2 left-1/2 w-14 h-14 bg-gray-300 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,255,255,0.4)] border-2 border-white"></div>
+                </div>
+                
+                <!-- Action Buttons (Ergonomic Layout) -->
+                <div class="absolute bottom-8 right-8 w-48 h-48 pointer-events-auto">
+                    <!-- Main Attack (Large, Bottom Right) -->
+                    <button id="btn-m-atk" class="mobile-btn absolute bottom-0 right-0 w-20 h-20 bg-red-800/90 border-red-400 text-3xl">⚔️</button>
+                    
+                    <!-- Shield (Left of Attack) -->
+                    <button id="btn-m-shield" class="mobile-btn absolute bottom-2 right-24 w-14 h-14 bg-yellow-700/90 border-yellow-400 text-xl">🛡️</button>
+                    
+                    <!-- Interact (Top of Attack) -->
+                    <button id="btn-m-interact" class="mobile-btn absolute bottom-24 right-2 w-14 h-14 bg-gray-700/90 border-gray-400 text-xl">✋</button>
+                    
+                    <!-- Skills (Arc layout) -->
+                    <button id="btn-m-s1" class="mobile-btn absolute bottom-24 right-20 w-12 h-12 bg-blue-800/90 border-blue-400 text-sm">S1</button>
+                    <button id="btn-m-s2" class="mobile-btn absolute bottom-16 right-32 w-12 h-12 bg-blue-800/90 border-blue-400 text-sm">S2</button>
+                    <button id="btn-m-s3" class="mobile-btn absolute bottom-4 right-40 w-12 h-12 bg-blue-800/90 border-blue-400 text-sm">S3</button>
+                </div>
+
+                <!-- Top Right Mobile Menu -->
+                <div class="absolute top-4 right-4 flex gap-2 pointer-events-auto">
+                    <button id="btn-m-chat" class="rpg-btn p-2 text-[10px] w-10 h-10 rounded shadow-lg">💬</button>
+                    <button id="btn-m-inv" class="rpg-btn p-2 text-[10px] w-10 h-10 rounded shadow-lg">🎒</button>
+                    <button id="btn-m-quest" class="rpg-btn p-2 text-[10px] w-10 h-10 rounded shadow-lg">📜</button>
+                    <button id="btn-m-menu" class="rpg-btn p-2 text-[10px] w-10 h-10 rounded shadow-lg">⚙️</button>
+                </div>
+            </div>
+
+            <!-- Universal Game UI Overlay -->
+            <div id="game-ui" class="flex flex-col justify-between p-4 z-40">
+                <!-- Top HUD -->
+                <div class="flex justify-between items-start">
+                    <!-- Player Stats -->
+                    <div class="rpg-panel p-3 ui-element w-64 flex flex-col gap-2">
+                        <div class="flex justify-between items-center mb-1 border-b border-gray-600 pb-1">
+                            <span id="hud-name" class="text-xs text-yellow-400 font-bold">Player</span>
+                            <span id="hud-lvl" class="text-[10px] text-white bg-gray-800 px-2 py-1 rounded">Lv.1</span>
+                        </div>
+                        <div class="bar-container rounded"><div id="bar-hp" class="hp-bar w-full rounded"></div><span class="bar-text" id="txt-hp">100/100</span></div>
+                        <div class="bar-container rounded"><div id="bar-mp" class="mp-bar w-full rounded"></div><span class="bar-text" id="txt-mp">50/50</span></div>
+                        <div class="bar-container rounded h-2 mt-1"><div id="bar-exp" class="exp-bar w-0 rounded"></div></div>
+                    </div>
+
+                    <div class="flex flex-col items-end gap-2">
+                        <!-- Invite Code -->
+                        <div class="rpg-panel p-2 ui-element flex flex-col items-center border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                            <div class="text-[8px] text-blue-300 mb-1">ROOM CODE</div>
+                            <div id="hud-invite-code" class="text-sm md:text-lg text-white tracking-widest font-bold">------</div>
+                        </div>
+
+                        <!-- Map Info & Gold -->
+                        <div class="flex gap-2">
+                            <div class="rpg-panel p-2 ui-element text-center min-w-[80px]">
+                                <div class="text-[8px] text-gray-400">LOCATION</div>
+                                <div id="hud-floor" class="text-[10px] md:text-xs text-yellow-500 mt-1">TOWN</div>
+                            </div>
+                            <div class="rpg-panel p-2 ui-element text-xs flex items-center gap-2">
+                                <span>🪙</span> <span id="hud-gold">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Desktop Buttons -->
+                        <div class="hidden md:flex gap-2 mt-2 desktop-only">
+                            <button id="btn-inv" class="rpg-btn p-2 text-[10px] ui-element w-20">INV (I)</button>
+                            <button id="btn-quest" class="rpg-btn p-2 text-[10px] ui-element w-20">QUEST</button>
+                            <button id="btn-menu" class="rpg-btn p-2 text-[10px] ui-element w-24">MENU (ESC)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom HUD -->
+                <div class="flex justify-between items-end">
+                    <!-- Chat Box -->
+                    <div id="chat-box" class="rpg-panel w-80 h-48 ui-element flex flex-col pointer-events-auto bg-black/80">
+                        <div id="chat-messages" class="flex-1 overflow-y-auto p-3 text-[10px] flex flex-col gap-2 leading-relaxed"></div>
+                        <input type="text" id="chat-input" placeholder="Press Enter to chat..." class="rpg-input p-2 text-[10px] border-t border-gray-600 border-l-0 border-r-0 border-b-0">
+                    </div>
+
+                    <!-- Desktop Skills Hint (Hidden on Mobile) -->
+                    <div id="desktop-hints" class="hidden gap-2 ui-element bg-black/80 p-3 rounded-lg border-2 border-gray-700 shadow-lg">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon" id="skill-1"><span id="s1-icon">1</span><div id="s1-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">1</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon" id="skill-2"><span id="s2-icon">2</span><div id="s2-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">2</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon" id="skill-3"><span id="s3-icon">3</span><div id="s3-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">3</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 ml-3 border-l border-gray-600 pl-3">
+                            <div class="skill-icon border-yellow-500 text-sm">🛡️</div>
+                            <span class="text-[8px] text-gray-400">J</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon border-red-500 text-sm">⚔️</div>
+                            <span class="text-[8px] text-gray-400">K</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 ml-3 border-l border-gray-600 pl-3">
+                            <div class="skill-icon border-gray-500 text-sm">✋</div>
+                            <span class="text-[8px] text-gray-400">SPACE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modals -->
+            <div id="modal-inv" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-6 w-[90%] md:w-[450px] hidden z-50 ui-element">
+                <div class="flex justify-between items-center mb-6 border-b border-gray-600 pb-3">
+                    <h3 class="text-sm md:text-base text-yellow-500">INVENTORY</h3>
+                    <button class="text-red-500 hover:text-red-300 text-xl p-2" onclick="document.getElementById('modal-inv').classList.add('hidden')">×</button>
+                </div>
+                <div class="grid grid-cols-5 md:grid-cols-6 gap-3" id="inv-grid"></div>
+            </div>
+
+            <div id="modal-quest" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-6 w-[90%] md:w-[450px] hidden z-50 ui-element">
+                <div class="flex justify-between items-center mb-6 border-b border-gray-600 pb-3">
+                    <h3 class="text-sm md:text-base text-yellow-500">QUESTS</h3>
+                    <button class="text-red-500 hover:text-red-300 text-xl p-2" onclick="document.getElementById('modal-quest').classList.add('hidden')">×</button>
+                </div>
+                <div id="quest-list" class="flex flex-col gap-3 text-xs max-h-[50vh] overflow-y-auto"></div>
+            </div>
+
+            <div id="modal-menu" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-8 w-80 hidden z-50 ui-element flex flex-col gap-6 text-center">
+                <h3 class="text-xl text-yellow-500 border-b border-gray-600 pb-3">SYSTEM</h3>
+                <div class="bg-black/60 p-4 rounded border border-gray-600 mb-2">
+                    <p class="text-[8px] text-gray-400 mb-2">ROOM INVITE CODE</p>
+                    <p id="menu-invite-code" class="text-2xl text-white tracking-widest font-bold">------</p>
+                </div>
+                <button id="btn-save-exit" class="rpg-btn p-4 text-xs">SAVE & LEAVE ROOM</button>
+                <button onclick="document.getElementById('modal-menu').classList.add('hidden')" class="rpg-btn p-4 text-xs bg-gray-800 border-gray-500 text-gray-300">RESUME</button>
+            </div>
+
+            <div id="death-screen" class="absolute top-0 left-0 w-full h-full bg-black/95 hidden z-[60] flex flex-col justify-center items-center pointer-events-auto">
+                <h1 class="text-5xl md:text-7xl text-red-600 mb-10 font-bold" style="text-shadow: 4px 4px 0 #000;">YOU DIED</h1>
+                <p class="text-gray-400 text-xs mb-8">You have been returned to the Town.</p>
+                <button id="btn-respawn" class="rpg-btn px-10 py-5 text-sm md:text-xl">RESPAWN IN TOWN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & GAME LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { getDatabase, ref, set, onValue, onDisconnect, remove, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js";
+
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyBySp5ie_a8xhoxFZWM9KEKWUmyG-7J4CM",
+            authDomain: "manzgame-13509.firebaseapp.com",
+            projectId: "manzgame-13509",
+            storageBucket: "manzgame-13509.firebasestorage.app",
+            messagingSenderId: "237567563134",
+            appId: "1:237567563134:web:6edd240395f61d09348f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        // SOUND EFFECTS SYSTEM
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const SoundFX = {
+            play: function(freq, type, duration, vol=0.1, slideFreq=null) {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                if(slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            },
+            slash: () => SoundFX.play(600, 'sawtooth', 0.1, 0.1, 200),
+            shield: () => SoundFX.play(150, 'square', 0.2, 0.1),
+            magic: () => SoundFX.play(800, 'sine', 0.3, 0.1, 1200),
+            heal: () => { SoundFX.play(400, 'sine', 0.2, 0.1, 600); setTimeout(()=>SoundFX.play(600, 'sine', 0.3, 0.1, 800), 100); },
+            heavy: () => SoundFX.play(200, 'sawtooth', 0.3, 0.2, 100),
+            hit: () => SoundFX.play(100, 'square', 0.1, 0.15, 50),
+            portal: () => { SoundFX.play(300, 'sine', 0.5, 0.1, 600); setTimeout(()=>SoundFX.play(400, 'sine', 0.5, 0.1, 800), 200); },
+            levelUp: () => { SoundFX.play(400, 'square', 0.1, 0.1); setTimeout(()=>SoundFX.play(500, 'square', 0.1, 0.1), 100); setTimeout(()=>SoundFX.play(600, 'square', 0.3, 0.1), 200); },
+            pickup: () => SoundFX.play(900, 'sine', 0.1, 0.1, 1200),
+            questComplete: () => { SoundFX.play(500, 'square', 0.1, 0.1); setTimeout(()=>SoundFX.play(700, 'square', 0.2, 0.1), 150); }
+        };
+
+        // GLOBAL STATE
+        let currentUser = null;
+        let currentInviteCode = null;
+        let playerRef = null; 
+        let otherPlayers = {};
+        let gameLoopId;
+        let isGameRunning = false;
+        
+        // Strict Mobile Detection
+        const isMobileDevice = () => {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0);
+        };
+
+        const imgKnight = new Image(); imgKnight.src = "https://i.ibb.co.com/7d4SgNtS/b59766b757572f2602678f3e274eacd9-removebg-preview.png";
+        const imgMage = new Image(); imgMage.src = "https://i.ibb.co.com/XxmBdS4t/Avatars-In-Pixels-removebg-preview.png";
+
+        const screens = {
+            auth: document.getElementById('auth-screen'),
+            lobby: document.getElementById('lobby-screen'),
+            char: document.getElementById('char-screen'),
+            game: document.getElementById('game-screen')
+        };
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        // AUTHENTICATION
+        const authMsg = document.getElementById('auth-msg');
+
+        document.getElementById('btn-google-login').addEventListener('click', async () => {
+            try { authMsg.innerText = "Authenticating..."; await signInWithPopup(auth, provider); } 
+            catch (error) { authMsg.innerText = error.message; }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('player-email-display').innerText = user.displayName || user.email;
+                showScreen('lobby');
+            } else {
+                currentUser = null; showScreen('auth'); authMsg.innerText = "";
+            }
+        });
+
+        // MULTIPLAYER INVITE CODE SYSTEM
+        function generateInviteCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for(let i=0; i<6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            return code;
+        }
+
+        document.getElementById('btn-create-world').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-create-world');
+            const msg = document.getElementById('create-msg');
+            let name = document.getElementById('new-world-name').value.trim() || `${currentUser.displayName}'s World`;
+            
+            btn.disabled = true; msg.innerText = "Creating Room...";
+            
+            let code = generateInviteCode();
+            let unique = false;
+            while(!unique) {
+                const snap = await getDoc(doc(db, "worlds", code));
+                if(!snap.exists()) unique = true;
+                else code = generateInviteCode();
+            }
+
+            try {
+                await setDoc(doc(db, "worlds", code), {
+                    name: name, owner: currentUser.uid, createdAt: Date.now()
+                });
+                joinWorld(code);
+            } catch (e) {
+                msg.innerText = "Error creating world.";
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-join-world').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-join-world');
+            const msg = document.getElementById('join-msg');
+            let code = document.getElementById('join-invite-code').value.trim().toUpperCase();
+            
+            if(code.length !== 6) { msg.innerText = "Code must be 6 characters."; return; }
+            
+            btn.disabled = true; msg.innerText = "Searching Room...";
+
+            try {
+                const snap = await getDoc(doc(db, "worlds", code));
+                if(snap.exists()) { joinWorld(code); } 
+                else { msg.innerText = "Room not found. Invalid Code."; btn.disabled = false; }
+            } catch (e) { msg.innerText = "Error connecting to server."; btn.disabled = false; }
+        });
+
+        async function joinWorld(inviteCode) {
+            currentInviteCode = inviteCode;
+            document.getElementById('hud-invite-code').innerText = inviteCode;
+            document.getElementById('menu-invite-code').innerText = inviteCode;
+            
+            const playerDoc = await getDoc(doc(db, `worlds/${inviteCode}/players/${currentUser.uid}`));
+            if (playerDoc.exists()) {
+                loadGameData(playerDoc.data());
+                startGame();
+            } else {
+                showScreen('char');
+            }
+        }
+
+        // CHARACTER CREATION
+        let selectedClass = null;
+        document.getElementById('select-knight').addEventListener('click', (e) => {
+            selectedClass = 'knight';
+            e.currentTarget.classList.add('border-yellow-500');
+            document.getElementById('select-mage').classList.remove('border-yellow-500');
+        });
+        document.getElementById('select-mage').addEventListener('click', (e) => {
+            selectedClass = 'mage';
+            e.currentTarget.classList.add('border-yellow-500');
+            document.getElementById('select-knight').classList.remove('border-yellow-500');
+        });
+
+        document.getElementById('btn-start-game').addEventListener('click', async () => {
+            let name = document.getElementById('char-name').value.trim();
+            if(!name) name = currentUser.displayName ? currentUser.displayName.split(' ')[0] : "Player";
+            if (!selectedClass) selectedClass = 'knight';
+
+            const initialData = {
+                name: name, charClass: selectedClass, level: 1, exp: 0, gold: 0,
+                hp: selectedClass === 'knight' ? 150 : 100, maxHp: selectedClass === 'knight' ? 150 : 100,
+                mp: selectedClass === 'knight' ? 50 : 150, maxMp: selectedClass === 'knight' ? 50 : 150,
+                x: 0, y: 0, floor: 0, inventory: new Array(24).fill(null), // floor 0 = Town
+                quests: [{ id: 1, desc: "Kill 5 Slimes in Dungeon", target: 5, progress: 0, type: 'kill', monster: 'Slime', reward: 50 }]
+            };
+
+            await setDoc(doc(db, `worlds/${currentInviteCode}/players/${currentUser.uid}`), initialData);
+            loadGameData(initialData);
+            startGame();
+        });
+
+        // GAME ENGINE & MAPS
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let GAME = {
+            player: null, camera: { x: 0, y: 0 }, keys: {},
+            monsters: [], particles: [], floor: 0
+        };
+
+        // Map Textures
+        function createTexture(width, height, renderFunc) {
+            const c = document.createElement('canvas');
+            c.width = width; c.height = height;
+            const cx = c.getContext('2d');
+            renderFunc(cx, width, height);
+            return c;
+        }
+
+        let patterns = {};
+        function initTextures(ctx) {
+            patterns.grass = ctx.createPattern(createTexture(32, 32, (c, w, h) => {
+                c.fillStyle = '#4CAF50'; c.fillRect(0, 0, w, h);
+                for(let i=0; i<20; i++) { c.fillStyle = '#388E3C'; c.fillRect(Math.random()*w, Math.random()*h, 2, 2); }
+            }), 'repeat');
+            patterns.stone = ctx.createPattern(createTexture(32, 32, (c, w, h) => {
+                c.fillStyle = '#9E9E9E'; c.fillRect(0, 0, w, h);
+                c.strokeStyle = '#616161'; c.strokeRect(0,0,16,16); c.strokeRect(16,16,16,16); c.strokeRect(16,0,16,16); c.strokeRect(0,16,16,16);
+            }), 'repeat');
+            patterns.dirt = ctx.createPattern(createTexture(32, 32, (c, w, h) => {
+                c.fillStyle = '#795548'; c.fillRect(0, 0, w, h);
+                for(let i=0; i<20; i++) { c.fillStyle = '#5D4037'; c.fillRect(Math.random()*w, Math.random()*h, 2, 2); }
+            }), 'repeat');
+            patterns.dungeonFloor = ctx.createPattern(createTexture(64, 64, (c, w, h) => {
+                c.fillStyle = '#212121'; c.fillRect(0, 0, w, h);
+                c.strokeStyle = '#000'; c.lineWidth = 2; c.strokeRect(0,0,32,32); c.strokeRect(32,32,32,32); c.strokeRect(32,0,32,32); c.strokeRect(0,32,32,32);
+            }), 'repeat');
+        }
+
+        // Static Town Map Design
+        const TOWN_MAP = {
+            width: 3000, height: 3000,
+            buildings: [
+                { x: -500, y: -600, w: 350, h: 250, color: '#4e342e', roof: '#b71c1c', type: 'tavern', label: 'Tavern' },
+                { x: 150, y: -700, w: 450, h: 350, color: '#37474f', roof: '#0d47a1', type: 'guild', label: 'Guild Hall' },
+                { x: -700, y: 100, w: 250, h: 250, color: '#424242', roof: '#212121', type: 'blacksmith', label: 'Blacksmith' },
+                { x: 400, y: 150, w: 250, h: 200, color: '#2e7d32', roof: '#1b5e20', type: 'shop', label: 'Item Shop' },
+                { x: -200, y: -200, w: 150, h: 150, color: '#795548', roof: '#4e342e', type: 'house', label: 'House' },
+                { x: 200, y: -200, w: 150, h: 150, color: '#795548', roof: '#4e342e', type: 'house', label: 'House' },
+                { x: -1000, y: -1000, w: 400, h: 300, color: '#616161', roof: '#424242', type: 'castle', label: 'Castle' }
+            ],
+            paths: [
+                { x: -150, y: -1200, w: 300, h: 2400 }, 
+                { x: -1200, y: -150, w: 2400, h: 300 },
+                { x: -600, y: -600, w: 1200, h: 150 }
+            ],
+            npcs: [
+                { x: -100, y: -300, name: 'Guard', color: '#B0BEC5' },
+                { x: 100, y: -300, name: 'Guard', color: '#B0BEC5' },
+                { x: 300, y: 200, name: 'Merchant', color: '#FFD54F' },
+                { x: -600, y: 250, name: 'Smith', color: '#FF8A65' },
+                { x: 200, y: -500, name: 'Quest Giver', color: '#81C784' }
+            ],
+            trees: [],
+            portal: { x: 0, y: -1000, r: 80, label: 'Dungeon Gate' },
+            fountain: { x: 0, y: 0, r: 80 }
+        };
+        // Generate Trees
+        for(let i=0; i<200; i++) {
+            let tx = (Math.random()-0.5)*3000, ty = (Math.random()-0.5)*3000;
+            if (Math.abs(tx) > 300 && Math.abs(ty) > 300 && ty > -900) TOWN_MAP.trees.push({x: tx, y: ty, size: 30 + Math.random()*20});
+        }
+
+        const CLASSES = {
+            knight: {
+                img: imgKnight, speed: 4.5, atk: 15, def: 10,
+                skills: [
+                    { name: 'Slash', cd: 2000, cost: 5, icon: 'S1', color: '#fff', radius: 80, dmgMult: 1.5 },
+                    { name: 'Smash', cd: 5000, cost: 15, icon: 'S2', color: '#8B4513', radius: 130, dmgMult: 2.5 },
+                    { name: 'Warcry', cd: 10000, cost: 20, icon: 'S3', color: '#ff4400', isBuff: true, duration: 5000 }
+                ]
+            },
+            mage: {
+                img: imgMage, speed: 4, atk: 10, def: 5,
+                skills: [
+                    { name: 'Heal', cd: 6000, cost: 30, icon: 'S1', color: '#00FF00', isHeal: true, amount: 50 },
+                    { name: 'Burst', cd: 3000, cost: 15, icon: 'S2', color: '#00FFFF', radius: 110, dmgMult: 2.0 },
+                    { name: 'Blessing', cd: 15000, cost: 50, icon: 'S3', color: '#FFD700', isBuff: true, duration: 8000 }
+                ]
+            }
+        };
+
+        const MONSTER_TYPES = [
+            { name: 'Slime', color: '#00FF00', hp: 30, atk: 5, speed: 1.5, exp: 10, gold: 5, size: 20 },
+            { name: 'Skeleton', color: '#DDDDDD', hp: 50, atk: 10, speed: 2.0, exp: 25, gold: 12, size: 25 },
+            { name: 'Goblin', color: '#228B22', hp: 40, atk: 15, speed: 2.5, exp: 20, gold: 10, size: 22 },
+            { name: 'Boss', color: '#ff0000', hp: 300, atk: 35, speed: 1.8, exp: 200, gold: 150, size: 40, isBoss: true }
+        ];
+
+        // MOBILE JOYSTICK
+        let joyX = 0, joyY = 0;
+        const joyContainer = document.getElementById('joystick-container');
+        const joyKnob = document.getElementById('joystick-knob');
+
+        if(isMobileDevice()) {
+            joyContainer.addEventListener('touchstart', handleTouch, {passive: false});
+            joyContainer.addEventListener('touchmove', handleTouch, {passive: false});
+            joyContainer.addEventListener('touchend', releaseTouch, {passive: false});
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.targetTouches[0];
+            const rect = joyContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const maxDist = rect.width / 2;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+            joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            joyX = dx / maxDist; joyY = dy / maxDist;
+        }
+        function releaseTouch(e) {
+            e.preventDefault();
+            joyKnob.style.transform = `translate(-50%, -50%)`;
+            joyX = 0; joyY = 0;
+        }
+
+        // COLLISION CHECK
+        function checkCollision(newX, newY) {
+            const bounds = 1500;
+            if (newX < -bounds || newX > bounds || newY < -bounds || newY > bounds) return true;
+            
+            if (GAME.floor === 0) {
+                for (let b of TOWN_MAP.buildings) {
+                    if (newX > b.x && newX < b.x + b.w && newY > b.y && newY < b.y + b.h) return true;
+                }
+            }
+            return false;
+        }
+
+        class Player {
+            constructor(data) {
+                Object.assign(this, data);
+                this.width = 56; this.height = 56;
+                this.classData = CLASSES[this.charClass];
+                this.lastAttack = 0; this.skillCds = [0, 0, 0];
+                this.buffs = { warcry: 0, blessing: 0 };
+                this.isDead = false; this.isBlocking = false; this.wasBlocking = false;
+                this.lastAction = ''; this.actionTime = 0;
+                this.chatMsg = ''; this.chatTime = 0;
+                this.spacePressed = false;
+            }
+
+            update() {
+                if (this.isDead) return;
+
+                this.isBlocking = GAME.keys['j'] || GAME.keys['J'];
+                if(this.isBlocking && !this.wasBlocking) {
+                    SoundFX.shield();
+                }
+                this.wasBlocking = this.isBlocking;
+
+                let dx = 0, dy = 0;
+                if (GAME.keys['w'] || GAME.keys['W']) dy -= 1;
+                if (GAME.keys['s'] || GAME.keys['S']) dy += 1;
+                if (GAME.keys['a'] || GAME.keys['A']) dx -= 1;
+                if (GAME.keys['d'] || GAME.keys['D']) dx += 1;
+
+                if (joyX !== 0 || joyY !== 0) { dx = joyX; dy = joyY; }
+
+                if (dx !== 0 || dy !== 0) {
+                    const length = Math.hypot(dx, dy);
+                    dx /= length; dy /= length;
+                }
+
+                let speed = this.classData.speed;
+                if (this.buffs.blessing > Date.now()) speed *= 1.3;
+                if (this.isBlocking) speed *= 0.4;
+
+                let nextX = this.x + dx * speed;
+                let nextY = this.y + dy * speed;
+
+                if (!checkCollision(nextX, this.y)) this.x = nextX;
+                if (!checkCollision(this.x, nextY)) this.y = nextY;
+
+                // Actions
+                if ((GAME.keys['k'] || GAME.keys['K']) && Date.now() - this.lastAttack > 400 && !this.isBlocking) this.basicAttack();
+                if (GAME.keys['1'] && !this.isBlocking) this.useSkill(0);
+                if (GAME.keys['2'] && !this.isBlocking) this.useSkill(1);
+                if (GAME.keys['3'] && !this.isBlocking) this.useSkill(2);
+
+                // Interact (Space)
+                if (GAME.keys[' '] && !this.spacePressed) {
+                    this.spacePressed = true;
+                    this.interact();
+                }
+                if (!GAME.keys[' ']) this.spacePressed = false;
+
+                updateHUD();
+                syncMultiplayer();
+            }
+
+            interact() {
+                // Portal Logic
+                if (GAME.floor === 0) {
+                    // Town Portal -> Dungeon Floor 1
+                    if (Math.hypot(this.x - TOWN_MAP.portal.x, this.y - TOWN_MAP.portal.y) < 120) {
+                        SoundFX.portal();
+                        GAME.floor = 1; this.x = 0; this.y = 800; generateFloor(); saveGameData();
+                    }
+                } else {
+                    // Dungeon Portal -> Town or Next Floor
+                    if (GAME.monsters.length === 0) {
+                        if (Math.hypot(this.x, this.y) < 80) { // Center Portal -> Next Floor
+                            SoundFX.portal();
+                            GAME.floor++; this.x = 0; this.y = 800; generateFloor(); saveGameData();
+                        } else if (Math.hypot(this.x, this.y - 800) < 80) { // Spawn Portal -> Town
+                            SoundFX.portal();
+                            GAME.floor = 0; this.x = TOWN_MAP.portal.x; this.y = TOWN_MAP.portal.y + 150; generateFloor(); saveGameData();
+                        }
+                    }
+                }
+            }
+
+            draw(ctx) {
+                if (this.isDead) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(0, 20, 20, 10, 0, 0, Math.PI*2); ctx.fill();
+
+                if (this.isBlocking) {
+                    ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2); 
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; ctx.fill();
+                    ctx.strokeStyle = '#FFD700'; ctx.lineWidth=3; ctx.stroke();
+                }
+                if (this.buffs.warcry > Date.now()) {
+                    ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2); ctx.strokeStyle = '#ff4400'; ctx.lineWidth=4; ctx.stroke();
+                }
+
+                if (this.classData.img.complete) {
+                    const bob = (joyX!==0 || joyY!==0 || GAME.keys['w']||GAME.keys['a']||GAME.keys['s']||GAME.keys['d']) ? Math.sin(Date.now() / 100) * 5 : 0;
+                    ctx.drawImage(this.classData.img, -this.width/2, -this.height/2 + bob, this.width, this.height);
+                }
+
+                // Name & Level Background
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(-35, -this.height/2 - 22, 70, 14);
+                
+                ctx.fillStyle = this.charClass === 'knight' ? '#ff8888' : '#8888ff'; 
+                ctx.font = '8px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
+                ctx.fillText(`[${this.level}] ${this.name}`, 0, -this.height/2 - 15);
+                ctx.restore();
+
+                if (this.chatTime && Date.now() - this.chatTime < 5000) {
+                    drawBubble(ctx, this.chatMsg, this.x, this.y - 60);
+                }
+            }
+
+            basicAttack() {
+                this.lastAttack = Date.now();
+                this.lastAction = 'attack'; this.actionTime = Date.now();
+                SoundFX.slash();
+                syncMultiplayer(true);
+                createParticle(this.x, this.y, this.charClass === 'knight' ? '#fff' : '#00f', 'slash');
+                
+                GAME.monsters.forEach(m => {
+                    if (Math.hypot(this.x - m.x, this.y - m.y) < 80) m.takeDamage(this.classData.atk + (this.level * 2));
+                });
+            }
+
+            useSkill(index) {
+                const skill = this.classData.skills[index];
+                if (Date.now() < this.skillCds[index] || this.mp < skill.cost) return;
+
+                this.mp -= skill.cost;
+                this.skillCds[index] = Date.now() + skill.cd;
+                this.lastAction = 'skill_' + index; this.actionTime = Date.now();
+                syncMultiplayer(true);
+                updateSkillUI();
+
+                if (skill.isBuff) {
+                    if (skill.name === 'Warcry') { this.buffs.warcry = Date.now() + skill.duration; SoundFX.heavy(); }
+                    if (skill.name === 'Blessing') { this.buffs.blessing = Date.now() + skill.duration; SoundFX.magic(); }
+                    createParticle(this.x, this.y, skill.color, 'nova');
+                } else if (skill.isHeal) {
+                    this.heal(skill.amount + (this.level * 5));
+                    SoundFX.heal();
+                    createParticle(this.x, this.y, skill.color, 'heal');
+                } else {
+                    if(this.charClass === 'knight') SoundFX.heavy(); else SoundFX.magic();
+                    createParticle(this.x, this.y, skill.color, 'aoe', skill.radius);
+                    GAME.monsters.forEach(m => {
+                        if (Math.hypot(this.x - m.x, this.y - m.y) < skill.radius) m.takeDamage(this.classData.atk * skill.dmgMult);
+                    });
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.isDead) return;
+                let dmg = amount - (this.classData.def / 2);
+                if (this.isBlocking) dmg *= 0.1; 
+                dmg = Math.max(1, Math.floor(dmg));
+                
+                this.hp -= dmg;
+                SoundFX.hit();
+                spawnFloatingText(this.x, this.y - 20, `-${dmg}`, '#ff0000');
+                if (this.hp <= 0) { this.hp = 0; this.die(); }
+            }
+
+            heal(amount) {
+                this.hp = Math.min(this.maxHp, this.hp + amount);
+                spawnFloatingText(this.x, this.y - 20, `+${amount}`, '#00ff00');
+            }
+
+            die() {
+                this.isDead = true;
+                document.getElementById('death-screen').classList.remove('hidden');
+            }
+
+            gainExp(amount) {
+                this.exp += amount;
+                const needed = this.level * 100;
+                if (this.exp >= needed) {
+                    this.exp -= needed; this.level++;
+                    this.maxHp += 20; this.hp = this.maxHp;
+                    this.maxMp += 10; this.mp = this.maxMp;
+                    SoundFX.levelUp();
+                    spawnFloatingText(this.x, this.y - 50, "LEVEL UP!", '#FFD700');
+                    createParticle(this.x, this.y, '#FFD700', 'nova');
+                    saveGameData(); 
+                }
+            }
+
+            updateQuest(type, targetName) {
+                let updated = false;
+                this.quests.forEach(q => {
+                    if (q.type === type && (q.monster === targetName || targetName === 'Boss') && q.progress < q.target) {
+                        q.progress++; updated = true;
+                        if (q.progress >= q.target) {
+                            this.gold += q.reward; this.gainExp(q.reward * 2);
+                            SoundFX.questComplete();
+                            spawnFloatingText(this.x, this.y - 40, "Quest Complete!", '#FFD700');
+                            q.target = Math.floor(Math.random() * 5) + 5; q.progress = 0;
+                            const mType = MONSTER_TYPES[Math.floor(Math.random() * 3)].name;
+                            q.monster = mType; q.desc = `Kill ${q.target} ${mType}s`;
+                        }
+                    }
+                });
+                if(updated) updateQuestUI();
+            }
+        }
+
+        class Monster {
+            constructor(x, y, floor) {
+                this.x = x; this.y = y;
+                const isBossFloor = floor % 5 === 0;
+                let type = (isBossFloor && Math.random() < 0.3) ? MONSTER_TYPES[3] : MONSTER_TYPES[Math.floor(Math.random() * 3)];
+                const mult = 1 + (floor * 0.2);
+                this.name = type.name; this.color = type.color; this.size = type.size;
+                this.maxHp = Math.floor(type.hp * mult); this.hp = this.maxHp;
+                this.atk = Math.floor(type.atk * mult); this.speed = type.speed;
+                this.exp = Math.floor(type.exp * mult); this.gold = Math.floor(type.gold * mult);
+                this.isBoss = type.isBoss;
+            }
+            update() {
+                if (GAME.player.isDead) return;
+                const dx = GAME.player.x - this.x, dy = GAME.player.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 600 && dist > this.size + 20) {
+                    this.x += (dx / dist) * this.speed; this.y += (dy / dist) * this.speed;
+                } else if (dist <= this.size + 20 && Math.random() < 0.04) {
+                    GAME.player.takeDamage(this.atk);
+                    createParticle(GAME.player.x, GAME.player.y, '#ff0000', 'hit');
+                }
+            }
+            draw(ctx) {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(this.x, this.y + this.size*0.8, this.size, this.size*0.5, 0, 0, Math.PI*2); ctx.fill();
+                
+                // Body
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.stroke();
+                
+                // Eyes
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(this.x - this.size*0.3, this.y - this.size*0.2, this.size*0.15, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x + this.size*0.3, this.y - this.size*0.2, this.size*0.15, 0, Math.PI*2); ctx.fill();
+
+                // HP Bar
+                ctx.fillStyle = 'black'; ctx.fillRect(this.x - 20, this.y - this.size - 15, 40, 6);
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 19, this.y - this.size - 14, 38 * (this.hp/this.maxHp), 4);
+            }
+            takeDamage(amount) {
+                this.hp -= amount;
+                SoundFX.hit();
+                spawnFloatingText(this.x, this.y, Math.floor(amount), '#fff');
+                if (this.hp <= 0) {
+                    GAME.player.gainExp(this.exp); GAME.player.gold += this.gold;
+                    GAME.player.updateQuest('kill', this.name);
+                    if(Math.random() < 0.4) addToInventory(Math.random() > 0.5 ? 'HP Potion' : 'MP Potion');
+                }
+            }
+        }
+
+        function createParticle(x, y, color, type, radius=0) {
+            GAME.particles.push({ x, y, color, type, radius, life: 25, maxLife: 25 });
+        }
+
+        function spawnFloatingText(x, y, text, color) {
+            const screenX = canvas.width/2 + (x - GAME.camera.x);
+            const screenY = canvas.height/2 + (y - GAME.camera.y);
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.style.left = `${screenX}px`; el.style.top = `${screenY}px`; el.style.color = color;
+            el.innerText = text;
+            document.getElementById('floating-text-container').appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function drawBubble(ctx, text, x, y) {
+            if(!text) return;
+            ctx.save(); ctx.font = '10px "Press Start 2P"';
+            const w = ctx.measureText(text).width + 24; const h = 28;
+            ctx.translate(x, y);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.rect(-w/2, -h - 10, w, h); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-8, -10); ctx.lineTo(8, -10); ctx.lineTo(0, 0); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-7, -10); ctx.lineTo(7, -10); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.stroke();
+            ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 0, -h/2 - 10);
+            ctx.restore();
+        }
+
+        function loadGameData(data) {
+            GAME.player = new Player(data);
+            GAME.floor = data.floor || 0;
+            updateHUD(); updateSkillUI(); updateQuestUI(); generateFloor();
+        }
+
+        async function saveGameData() {
+            if (!GAME.player || !currentInviteCode) return;
+            const p = GAME.player;
+            try {
+                await updateDoc(doc(db, `worlds/${currentInviteCode}/players/${currentUser.uid}`), {
+                    name: p.name, charClass: p.charClass, level: p.level, exp: p.exp, gold: p.gold,
+                    hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp,
+                    x: p.x, y: p.y, floor: GAME.floor, quests: p.quests, inventory: p.inventory
+                });
+            } catch (e) { console.error("Save failed", e); }
+        }
+
+        function generateFloor() {
+            GAME.monsters = [];
+            const locText = GAME.floor === 0 ? "TOWN" : `DUNGEON FL.${GAME.floor}`;
+            document.getElementById('hud-floor').innerText = locText;
+            spawnFloatingText(GAME.player.x, GAME.player.y - 80, locText, '#FFD700');
+
+            if (GAME.floor > 0) {
+                const num = 10 + Math.floor(GAME.floor * 2);
+                for (let i = 0; i < num; i++) {
+                    GAME.monsters.push(new Monster((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, GAME.floor));
+                }
+            }
+        }
+
+        function addToInventory(item) {
+            const idx = GAME.player.inventory.findIndex(x => x === null);
+            if (idx !== -1) {
+                GAME.player.inventory[idx] = item;
+                SoundFX.pickup();
+                spawnFloatingText(GAME.player.x, GAME.player.y, `+${item}`, '#fff');
+                renderInventory();
+            }
+        }
+
+        // REAL MULTIPLAYER & CHAT SYNC
+        let lastSyncTime = 0;
+        function setupMultiplayer() {
+            if (!currentInviteCode) return;
+            
+            playerRef = ref(rtdb, `worlds/${currentInviteCode}/players/${currentUser.uid}`);
+            onDisconnect(playerRef).remove();
+
+            onValue(ref(rtdb, `worlds/${currentInviteCode}/players`), (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    for (const uid in data) {
+                        if (uid !== currentUser.uid) {
+                            if (!otherPlayers[uid]) otherPlayers[uid] = {};
+                            Object.assign(otherPlayers[uid], data[uid]);
+                        }
+                    }
+                    for (const uid in otherPlayers) { if (!data[uid]) delete otherPlayers[uid]; }
+                } else { otherPlayers = {}; }
+            });
+
+            const chatsRef = ref(rtdb, `worlds/${currentInviteCode}/chats`);
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = '';
+            
+            onChildAdded(chatsRef, (snapshot) => {
+                const msg = snapshot.val();
+                if(!msg) return;
+                
+                chatBox.innerHTML += `<div><span class="text-yellow-400 font-bold">[Lv.${msg.level || 1}] ${msg.name}:</span> <span class="text-white">${msg.text}</span></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                if (msg.uid === currentUser.uid) {
+                    GAME.player.chatMsg = msg.text; GAME.player.chatTime = Date.now();
+                } else if (otherPlayers[msg.uid]) {
+                    otherPlayers[msg.uid].chatMsg = msg.text; otherPlayers[msg.uid].chatTime = Date.now();
+                }
+            });
+        }
+
+        function syncMultiplayer(force = false) {
+            if (!playerRef) return;
+            const now = Date.now();
+            if (force || now - lastSyncTime > 50) { 
+                set(playerRef, {
+                    x: GAME.player.x, y: GAME.player.y, floor: GAME.floor,
+                    name: GAME.player.name, charClass: GAME.player.charClass, level: GAME.player.level,
+                    hp: GAME.player.hp, maxHp: GAME.player.maxHp, isBlocking: GAME.player.isBlocking,
+                    lastAction: GAME.player.lastAction, actionTime: GAME.player.actionTime, timestamp: now
+                });
+                lastSyncTime = now;
+            }
+        }
+
+        function sendChat(text) {
+            if(!text || text.trim() === '') return;
+            push(ref(rtdb, `worlds/${currentInviteCode}/chats`), {
+                uid: currentUser.uid, name: GAME.player.name, level: GAME.player.level,
+                text: text.trim(), timestamp: Date.now()
+            });
+        }
+
+        // UI UPDATES
+        function updateHUD() {
+            const p = GAME.player;
+            document.getElementById('hud-name').innerText = p.name;
+            document.getElementById('hud-lvl').innerText = `Lv.${p.level}`;
+            document.getElementById('hud-gold').innerText = p.gold;
+            document.getElementById('bar-hp').style.width = `${(p.hp/p.maxHp)*100}%`;
+            document.getElementById('txt-hp').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
+            document.getElementById('bar-mp').style.width = `${(p.mp/p.maxMp)*100}%`;
+            document.getElementById('txt-mp').innerText = `${Math.floor(p.mp)}/${p.maxMp}`;
+            const expN = p.level * 100;
+            document.getElementById('bar-exp').style.width = `${(p.exp/expN)*100}%`;
+        }
+
+        function updateSkillUI() {
+            for(let i=0; i<3; i++) {
+                const cdEl = document.getElementById(`s${i+1}-cd`);
+                const rem = GAME.player.skillCds[i] - Date.now();
+                if(rem > 0) { cdEl.style.display = 'flex'; cdEl.innerText = (rem/1000).toFixed(1); } 
+                else { cdEl.style.display = 'none'; }
+            }
+        }
+
+        function updateQuestUI() {
+            const list = document.getElementById('quest-list');
+            list.innerHTML = '';
+            GAME.player.quests.forEach(q => {
+                list.innerHTML += `<div class="border border-gray-600 p-3 bg-gray-800 rounded"><div class="text-yellow-400 mb-2 text-sm">${q.desc}</div><div class="flex justify-between items-center"><span class="text-gray-300">${q.progress} / ${q.target}</span><span class="text-yellow-500 font-bold">🪙 ${q.reward}</span></div></div>`;
+            });
+        }
+
+        function renderInventory() {
+            const grid = document.getElementById('inv-grid');
+            grid.innerHTML = '';
+            GAME.player.inventory.forEach((item, idx) => {
+                const slot = document.createElement('div');
+                slot.className = 'inv-slot text-2xl cursor-pointer hover:border-yellow-500 transition-colors';
+                if(item) { slot.innerHTML = item.includes('HP') ? '❤️' : '💧'; slot.onclick = () => useItem(idx); }
+                grid.appendChild(slot);
+            });
+        }
+
+        function useItem(index) {
+            const item = GAME.player.inventory[index];
+            if(!item) return;
+            if(item === 'HP Potion') GAME.player.heal(50);
+            if(item === 'MP Potion') GAME.player.mp = Math.min(GAME.player.maxMp, GAME.player.mp + 50);
+            GAME.player.inventory[index] = null; renderInventory();
+        }
+
+        // CONTROLS
+        window.addEventListener('keydown', e => { 
+            if (e.key === 'Enter') {
+                const ci = document.getElementById('chat-input');
+                if (document.activeElement === ci) { sendChat(ci.value); ci.value = ''; ci.blur(); } 
+                else { ci.focus(); }
+            } else if (e.key === 'Escape') {
+                document.getElementById('btn-menu').click();
+            } else if (document.activeElement !== document.getElementById('chat-input')) {
+                GAME.keys[e.key.toLowerCase()] = true; 
+            }
+        });
+        window.addEventListener('keyup', e => { GAME.keys[e.key.toLowerCase()] = false; });
+        document.getElementById('chat-input').addEventListener('keydown', e => e.stopPropagation());
+        
+        window.addEventListener('resize', () => { 
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight; 
+            ctx.imageSmoothingEnabled = false;
+        });
+
+        // Mobile Button Binding
+        function setupMobileBtn(id, key) {
+            const btn = document.getElementById(id); if(!btn) return;
+            btn.addEventListener('touchstart', e => { e.preventDefault(); GAME.keys[key] = true; });
+            btn.addEventListener('touchend', e => { e.preventDefault(); GAME.keys[key] = false; });
+        }
+        setupMobileBtn('btn-m-atk', 'k'); setupMobileBtn('btn-m-shield', 'j');
+        setupMobileBtn('btn-m-s1', '1'); setupMobileBtn('btn-m-s2', '2'); setupMobileBtn('btn-m-s3', '3');
+        setupMobileBtn('btn-m-interact', ' ');
+        
+        document.getElementById('btn-m-chat').addEventListener('click', () => {
+            const msg = prompt("Enter chat message:");
+            if(msg) sendChat(msg);
+        });
+        document.getElementById('btn-m-inv').addEventListener('click', () => { document.getElementById('btn-inv').click(); });
+        document.getElementById('btn-m-quest').addEventListener('click', () => { document.getElementById('btn-quest').click(); });
+        document.getElementById('btn-m-menu').addEventListener('click', () => { document.getElementById('btn-menu').click(); });
+
+        document.getElementById('btn-inv').addEventListener('click', () => { document.getElementById('modal-inv').classList.toggle('hidden'); renderInventory(); });
+        document.getElementById('btn-quest').addEventListener('click', () => document.getElementById('modal-quest').classList.toggle('hidden'));
+        document.getElementById('btn-menu').addEventListener('click', () => document.getElementById('modal-menu').classList.toggle('hidden'));
+
+        document.getElementById('btn-save-exit').addEventListener('click', async () => {
+            await saveGameData(); isGameRunning = false; cancelAnimationFrame(gameLoopId);
+            if(playerRef) remove(playerRef);
+            document.getElementById('modal-menu').classList.add('hidden');
+            document.getElementById('btn-create-world').disabled = false;
+            document.getElementById('btn-join-world').disabled = false;
+            document.getElementById('create-msg').innerText = ""; document.getElementById('join-msg').innerText = "";
+            showScreen('lobby');
+        });
+
+        document.getElementById('btn-respawn').addEventListener('click', () => {
+            GAME.player.isDead = false; GAME.player.hp = GAME.player.maxHp;
+            GAME.floor = 0; GAME.player.x = 0; GAME.player.y = 0; // Respawn at Town Center
+            document.getElementById('death-screen').classList.add('hidden');
+            generateFloor();
+        });
+
+        // DRAWING FUNCTIONS
+        function drawTown(ctx) {
+            // Grass Background
+            if(patterns.grass) {
+                ctx.fillStyle = patterns.grass;
+                ctx.fillRect(-1500, -1500, 3000, 3000);
+            } else {
+                ctx.fillStyle = '#2d4c1e'; ctx.fillRect(-1500, -1500, 3000, 3000);
+            }
+            
+            // Paths
+            if(patterns.stone) {
+                ctx.fillStyle = patterns.stone;
+            } else {
+                ctx.fillStyle = '#555555';
+            }
+            TOWN_MAP.paths.forEach(p => { ctx.fillRect(p.x, p.y, p.w, p.h); });
+
+            // Fountain
+            ctx.fillStyle = '#424242'; ctx.beginPath(); ctx.arc(TOWN_MAP.fountain.x, TOWN_MAP.fountain.y, TOWN_MAP.fountain.r, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#1e88e5'; ctx.beginPath(); ctx.arc(TOWN_MAP.fountain.x, TOWN_MAP.fountain.y, TOWN_MAP.fountain.r - 10, 0, Math.PI*2); ctx.fill();
+            
+            // Water animation
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath(); ctx.arc(TOWN_MAP.fountain.x, TOWN_MAP.fountain.y, TOWN_MAP.fountain.r - 20 + Math.sin(Date.now()/200)*5, 0, Math.PI*2); ctx.fill();
+
+            // Buildings
+            TOWN_MAP.buildings.forEach(b => {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(b.x + 10, b.y + 10, b.w, b.h);
+                // Base
+                ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h);
+                // Roof
+                ctx.fillStyle = b.roof || 'rgba(0,0,0,0.3)'; ctx.fillRect(b.x - 10, b.y - 10, b.w + 20, 50);
+                // Door
+                ctx.fillStyle = '#3e2723'; ctx.fillRect(b.x + b.w/2 - 20, b.y + b.h - 50, 40, 50);
+                // Label
+                ctx.fillStyle = '#fff'; ctx.font = '12px "Press Start 2P"'; ctx.textAlign = 'center';
+                ctx.fillText(b.label, b.x + b.w/2, b.y - 25);
+            });
+
+            // NPCs
+            TOWN_MAP.npcs.forEach(npc => {
+                ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(npc.x, npc.y + 15, 15, 8, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = npc.color; ctx.beginPath(); ctx.arc(npc.x, npc.y, 15, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '8px "Press Start 2P"'; ctx.textAlign = 'center';
+                ctx.fillText(npc.name, npc.x, npc.y - 25);
+            });
+
+            // Trees
+            TOWN_MAP.trees.forEach(t => {
+                ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(t.x, t.y+t.size, t.size, t.size/2, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.arc(t.x, t.y, t.size, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.arc(t.x - t.size*0.2, t.y - t.size*0.2, t.size*0.7, 0, Math.PI*2); ctx.fill();
+            });
+
+            // Dungeon Portal
+            ctx.fillStyle = '#8A2BE2'; ctx.beginPath(); ctx.arc(TOWN_MAP.portal.x, TOWN_MAP.portal.y, TOWN_MAP.portal.r, 0, Math.PI*2); ctx.fill();
+            // Portal glow
+            let glow = ctx.createRadialGradient(TOWN_MAP.portal.x, TOWN_MAP.portal.y, 0, TOWN_MAP.portal.x, TOWN_MAP.portal.y, TOWN_MAP.portal.r + 40);
+            glow.addColorStop(0, 'rgba(138, 43, 226, 0.8)');
+            glow.addColorStop(1, 'rgba(138, 43, 226, 0)');
+            ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(TOWN_MAP.portal.x, TOWN_MAP.portal.y, TOWN_MAP.portal.r + 40, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(TOWN_MAP.portal.x, TOWN_MAP.portal.y, TOWN_MAP.portal.r - 10 + Math.sin(Date.now()/150)*10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = '10px "Press Start 2P"'; ctx.textAlign = 'center';
+            ctx.fillText(TOWN_MAP.portal.label, TOWN_MAP.portal.x, TOWN_MAP.portal.y - TOWN_MAP.portal.r - 15);
+            ctx.fillText("(SPACE)", TOWN_MAP.portal.x, TOWN_MAP.portal.y - TOWN_MAP.portal.r - 5);
+        }
+
+        function drawTorch(ctx, x, y) {
+            ctx.fillStyle = '#5d4037'; ctx.fillRect(x-5, y-10, 10, 20);
+            ctx.fillStyle = '#ff9800'; ctx.beginPath(); ctx.arc(x, y-15, 8 + Math.random()*2, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(255, 152, 0, 0.2)'; ctx.beginPath(); ctx.arc(x, y-15, 40 + Math.random()*5, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawDungeon(ctx) {
+            // Stone Floor
+            if(patterns.dungeonFloor) {
+                ctx.fillStyle = patterns.dungeonFloor;
+                ctx.fillRect(-1500, -1500, 3000, 3000);
+            } else {
+                ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-1500, -1500, 3000, 3000);
+                ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+                const ts = 100;
+                const sX = Math.floor((GAME.camera.x - canvas.width/2)/ts)*ts, sY = Math.floor((GAME.camera.y - canvas.height/2)/ts)*ts;
+                ctx.beginPath();
+                for(let x=sX; x<sX+canvas.width+ts; x+=ts) { ctx.moveTo(x, sY); ctx.lineTo(x, sY+canvas.height+ts); }
+                for(let y=sY; y<sY+canvas.height+ts; y+=ts) { ctx.moveTo(sX, y); ctx.lineTo(sX+canvas.width+ts, y); }
+                ctx.stroke();
+            }
+
+            // Walls
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-1500, -1500, 3000, 100);
+            ctx.fillRect(-1500, 1400, 3000, 100);
+            ctx.fillRect(-1500, -1500, 100, 3000);
+            ctx.fillRect(1400, -1500, 100, 3000);
+
+            // Torches
+            for(let i=-1400; i<=1400; i+=400) {
+                drawTorch(ctx, i, -1400);
+                drawTorch(ctx, -1400, i);
+                drawTorch(ctx, 1400, i);
+            }
+
+            // Portals
+            if (GAME.monsters.length === 0) {
+                // Next Floor
+                ctx.fillStyle = '#00FFCC'; ctx.beginPath(); ctx.arc(0, 0, 50, 0, Math.PI*2); ctx.fill();
+                let glow1 = ctx.createRadialGradient(0, 0, 0, 0, 0, 90);
+                glow1.addColorStop(0, 'rgba(0, 255, 204, 0.8)'); glow1.addColorStop(1, 'rgba(0, 255, 204, 0)');
+                ctx.fillStyle = glow1; ctx.beginPath(); ctx.arc(0, 0, 90, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '10px "Press Start 2P"'; ctx.textAlign = 'center';
+                ctx.fillText("NEXT FLOOR", 0, -70);
+                
+                // Back to Town
+                ctx.fillStyle = '#8A2BE2'; ctx.beginPath(); ctx.arc(0, 800, 50, 0, Math.PI*2); ctx.fill();
+                let glow2 = ctx.createRadialGradient(0, 800, 0, 0, 800, 90);
+                glow2.addColorStop(0, 'rgba(138, 43, 226, 0.8)'); glow2.addColorStop(1, 'rgba(138, 43, 226, 0)');
+                ctx.fillStyle = glow2; ctx.beginPath(); ctx.arc(0, 800, 90, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText("RETURN TOWN", 0, 800 - 70);
+            }
+        }
+
+        function drawOtherPlayers(ctx) {
+            const now = Date.now();
+            for (const uid in otherPlayers) {
+                const p = otherPlayers[uid];
+                if (now - p.timestamp > 5000) continue; 
+                if (p.floor !== GAME.floor) continue; // CRITICAL: Only show players on the SAME map/floor
+                
+                if (p.renderX === undefined) { p.renderX = p.x; p.renderY = p.y; }
+                p.renderX += (p.x - p.renderX) * 0.4; p.renderY += (p.y - p.renderY) * 0.4;
+
+                if (p.actionTime > (p.localLastActionTime || 0)) {
+                    if (p.lastAction === 'attack') createParticle(p.renderX, p.renderY, p.charClass === 'knight' ? '#fff' : '#00f', 'slash');
+                    else if (p.lastAction.startsWith('skill_')) createParticle(p.renderX, p.renderY, '#00FFFF', 'nova');
+                    p.localLastActionTime = p.actionTime;
+                }
+
+                ctx.save(); ctx.translate(p.renderX, p.renderY);
+                
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(0, 20, 20, 10, 0, 0, Math.PI*2); ctx.fill();
+
+                if (p.isBlocking) {
+                    ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2); ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; ctx.fill();
+                    ctx.strokeStyle = '#FFD700'; ctx.lineWidth=3; ctx.stroke();
+                }
+                
+                const cData = CLASSES[p.charClass];
+                if (cData && cData.img.complete) ctx.drawImage(cData.img, -28, -28, 56, 56);
+                
+                // HP Bar
+                ctx.fillStyle = 'black'; ctx.fillRect(-25, -40, 50, 6);
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(-24, -39, 48 * (Math.max(0, p.hp)/p.maxHp), 4);
+                
+                // Name & Level
+                ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(-35, -55, 70, 12);
+                ctx.fillStyle = p.charClass === 'knight' ? '#ff8888' : '#8888ff'; 
+                ctx.font = '8px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline='middle'; 
+                ctx.fillText(`[${p.level || 1}] ${p.name}`, 0, -49);
+                ctx.restore();
+
+                if (p.chatTime && now - p.chatTime < 5000) drawBubble(ctx, p.chatMsg, p.renderX, p.renderY - 60);
+            }
+        }
+
+        function drawParticles(ctx) {
+            for(let i = GAME.particles.length-1; i>=0; i--) {
+                let p = GAME.particles[i]; p.life--;
+                ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life / p.maxLife;
+                if (p.type === 'slash') { ctx.strokeStyle = p.color; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, 55, -Math.PI/4, Math.PI/4); ctx.stroke(); } 
+                else if (p.type === 'nova') { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(0, 0, (p.maxLife - p.life) * 5, 0, Math.PI*2); ctx.fill(); } 
+                else if (p.type === 'aoe') { ctx.strokeStyle = p.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = p.color; ctx.globalAlpha *= 0.3; ctx.fill(); } 
+                else if (p.type === 'hit') { ctx.fillStyle = p.color; ctx.fillRect(-6, -6 + (p.maxLife-p.life), 12, 12); } 
+                else if (p.type === 'heal') { ctx.fillStyle = p.color; ctx.font = '24px Arial'; ctx.fillText('+', 0, -(p.maxLife-p.life)*2); }
+                ctx.restore();
+                if(p.life <= 0) GAME.particles.splice(i, 1);
+            }
+        }
+
+        function drawLighting(ctx) {
+            // Safe overlay approach avoiding destination-out rendering issues
+            let grd = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 50, canvas.width/2, canvas.height/2, 400);
+            grd.addColorStop(0, 'rgba(0,0,0,0)');
+            grd.addColorStop(1, 'rgba(0,0,0,0.8)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // MAIN LOOP
+        function startGame() {
+            showScreen('game'); 
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            ctx.imageSmoothingEnabled = false;
+            initTextures(ctx);
+            
+            setupMultiplayer(); isGameRunning = true;
+            setInterval(() => { if(isGameRunning && !GAME.player.isDead) GAME.player.mp = Math.min(GAME.player.maxMp, GAME.player.mp + 3); }, 1000);
+            setInterval(() => { if(isGameRunning) saveGameData(); }, 15000); // Save more frequently
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+            GAME.player.update();
+            for(let i=GAME.monsters.length-1; i>=0; i--) { GAME.monsters[i].update(); if(GAME.monsters[i].hp <= 0) GAME.monsters.splice(i, 1); }
+            
+            GAME.camera.x += (GAME.player.x - GAME.camera.x) * 0.15; 
+            GAME.camera.y += (GAME.player.y - GAME.camera.y) * 0.15;
+
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save(); 
+            ctx.translate(canvas.width/2 - GAME.camera.x, canvas.height/2 - GAME.camera.y);
+
+            if (GAME.floor === 0) drawTown(ctx);
+            else drawDungeon(ctx);
+            
+            drawOtherPlayers(ctx); 
+            
+            const entities = [GAME.player, ...GAME.monsters].sort((a,b) => a.y - b.y);
+            entities.forEach(e => e.draw(ctx));
+            
+            drawParticles(ctx);
+            ctx.restore();
+
+            if (GAME.floor > 0) drawLighting(ctx);
+
+            updateSkillUI();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>

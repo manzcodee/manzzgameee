@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Fantasy MMORPG - Real Multiplayer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4a0404;
+            --secondary: #d4af37;
+            --bg-dark: #1a1a2e;
+            --panel-bg: rgba(20, 20, 35, 0.95);
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        canvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            display: block;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+        .rpg-panel {
+            background: var(--panel-bg);
+            border: 4px solid #3a3a5c;
+            border-image: linear-gradient(to bottom right, #4a4a7a, #1a1a2e) 1;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        .rpg-btn {
+            background: linear-gradient(to bottom, #4a0404, #2a0202);
+            border: 2px solid #8a0808;
+            color: #d4af37;
+            text-shadow: 2px 2px 0px #000;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .rpg-btn:hover { background: linear-gradient(to bottom, #6a0606, #4a0404); border-color: #d4af37; transform: scale(1.02); }
+        .rpg-btn:active { transform: scale(0.98); }
+        .rpg-btn:disabled { filter: grayscale(1); cursor: not-allowed; transform: none; }
+
+        .rpg-input {
+            background: #0f0f1a;
+            border: 2px solid #4a4a7a;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8rem;
+        }
+        .rpg-input:focus { outline: none; border-color: var(--secondary); }
+
+        .bar-container { background: #222; border: 2px solid #555; height: 20px; position: relative; }
+        .hp-bar { background: linear-gradient(to right, #ff0000, #cc0000); height: 100%; transition: width 0.1s linear; }
+        .mp-bar { background: linear-gradient(to right, #0055ff, #0033cc); height: 100%; transition: width 0.1s linear; }
+        .exp-bar { background: linear-gradient(to right, #ffd700, #b8860b); height: 100%; transition: width 0.2s; }
+        .bar-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.6rem; text-shadow: 1px 1px 0 #000; z-index: 10; }
+
+        .inv-slot { width: 40px; height: 40px; background: rgba(0,0,0,0.5); border: 2px solid #4a4a7a; display: flex; justify-content: center; align-items: center; }
+
+        .skill-icon { width: 45px; height: 45px; border: 2px solid #d4af37; background: #222; position: relative; }
+        .skill-cooldown { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; font-size: 0.7rem; display: none; }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background-image: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover; background-position: center; z-index: 50;
+        }
+        .hidden { display: none !important; }
+
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .ui-element { pointer-events: auto; }
+
+        .floating-text { position: absolute; font-size: 0.8rem; font-weight: bold; text-shadow: 1px 1px 0 #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 20;}
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+
+        /* Mobile Controls Styling */
+        .mobile-btn {
+            background: rgba(30, 30, 50, 0.8); border: 2px solid #5a5a8a; border-radius: 50%;
+            color: white; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); font-weight: bold; transition: transform 0.1s;
+        }
+        .mobile-btn:active { transform: scale(0.85); background: rgba(50, 50, 80, 0.9); }
+        .btn-atk { background: rgba(150, 20, 20, 0.8); border-color: #ff4444; width: 65px; height: 65px; font-size: 1.2rem; }
+        .btn-shield { background: rgba(150, 120, 20, 0.8); border-color: #ffcc00; width: 55px; height: 55px; font-size: 1rem; }
+        .btn-skill { background: rgba(20, 60, 150, 0.8); border-color: #4488ff; width: 45px; height: 45px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="relative w-full h-full">
+
+        <!-- AUTH SCREEN -->
+        <div id="auth-screen" class="screen">
+            <h1 class="text-4xl text-yellow-500 mb-8 text-center leading-relaxed" style="text-shadow: 4px 4px 0 #4a0404;">PIXEL FANTASY<br><span class="text-2xl text-white">MMORPG</span></h1>
+            <div class="rpg-panel p-8 w-[400px] flex flex-col gap-4 items-center max-w-[90%]">
+                <p class="text-xs text-gray-300 text-center mb-4 leading-relaxed">Real-time Multiplayer via Invite Code.<br>Synced via Firebase.</p>
+                <button id="btn-google-login" class="rpg-btn p-4 w-full text-[10px] flex items-center justify-center gap-3">
+                    <div class="bg-white p-1 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    </div>
+                    <span>SIGN IN WITH GOOGLE</span>
+                </button>
+                <p id="auth-msg" class="text-red-500 text-[10px] text-center h-4 mt-2"></p>
+            </div>
+        </div>
+
+        <!-- LOBBY SCREEN (INVITE CODE SYSTEM) -->
+        <div id="lobby-screen" class="screen hidden">
+            <div class="absolute top-4 right-4 flex items-center gap-4">
+                <span id="player-email-display" class="text-xs text-gray-300 hidden md:block"></span>
+                <button id="btn-logout" class="rpg-btn px-4 py-2 text-xs">LOGOUT</button>
+            </div>
+            <h2 class="text-3xl text-yellow-500 mb-8" style="text-shadow: 2px 2px 0 #000;">MULTIPLAYER LOBBY</h2>
+            
+            <div class="flex flex-col md:flex-row gap-8 max-w-[90%]">
+                <!-- Create World -->
+                <div class="rpg-panel p-8 w-72 flex flex-col items-center gap-4">
+                    <div class="text-4xl">🌍</div>
+                    <h3 class="text-xl text-yellow-400">CREATE WORLD</h3>
+                    <p class="text-[10px] text-center text-gray-400 leading-relaxed">Host a new multiplayer room and get an Invite Code to share.</p>
+                    <input type="text" id="new-world-name" placeholder="World Name" class="rpg-input p-3 w-full text-center text-xs">
+                    <button id="btn-create-world" class="rpg-btn p-3 w-full text-xs">CREATE & GET CODE</button>
+                    <p id="create-msg" class="text-yellow-500 text-[10px] text-center h-4"></p>
+                </div>
+
+                <!-- Join World -->
+                <div class="rpg-panel p-8 w-72 flex flex-col items-center gap-4">
+                    <div class="text-4xl">🤝</div>
+                    <h3 class="text-xl text-blue-400">JOIN WORLD</h3>
+                    <p class="text-[10px] text-center text-gray-400 leading-relaxed">Enter a 6-digit Invite Code from your friend to join their world.</p>
+                    <input type="text" id="join-invite-code" placeholder="ENTER CODE" class="rpg-input p-3 w-full text-center text-lg uppercase tracking-widest" maxlength="6">
+                    <button id="btn-join-world" class="rpg-btn p-3 w-full text-xs border-blue-500 text-blue-300">JOIN ROOM</button>
+                    <p id="join-msg" class="text-red-500 text-[10px] text-center h-4"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHARACTER CREATION SCREEN -->
+        <div id="char-screen" class="screen hidden">
+            <h2 class="text-2xl md:text-3xl text-yellow-500 mb-8">CREATE CHARACTER</h2>
+            <div class="flex flex-col md:flex-row gap-4 md:gap-8 max-h-[60vh] overflow-y-auto md:overflow-visible">
+                <div class="rpg-panel p-4 md:p-6 w-64 md:w-72 flex flex-col items-center cursor-pointer border-4 border-transparent hover:border-yellow-500 transition-colors" id="select-knight">
+                    <img src="https://i.ibb.co.com/7d4SgNtS/b59766b757572f2602678f3e274eacd9-removebg-preview.png" alt="Knight" class="h-32 md:h-48 object-contain mb-4 filter drop-shadow-lg">
+                    <h3 class="text-lg md:text-xl text-red-400 mb-2">KNIGHT</h3>
+                    <ul class="text-[10px] text-gray-300 text-left w-full list-disc pl-4 leading-loose">
+                        <li>Melee Damage & High Defense</li>
+                        <li>Skills: Slash, Smash, Shield</li>
+                    </ul>
+                </div>
+                <div class="rpg-panel p-4 md:p-6 w-64 md:w-72 flex flex-col items-center cursor-pointer border-4 border-transparent hover:border-yellow-500 transition-colors" id="select-mage">
+                    <img src="https://i.ibb.co.com/XxmBdS4t/Avatars-In-Pixels-removebg-preview.png" alt="Mage" class="h-32 md:h-48 object-contain mb-4 filter drop-shadow-lg">
+                    <h3 class="text-lg md:text-xl text-blue-400 mb-2">SUPPORT MAGE</h3>
+                    <ul class="text-[10px] text-gray-300 text-left w-full list-disc pl-4 leading-loose">
+                        <li>Magic Damage & Healing</li>
+                        <li>Skills: Heal, Burst, Blessing</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col md:flex-row gap-4 items-center">
+                <input type="text" id="char-name" placeholder="Character Name" class="rpg-input p-3 w-64 text-center">
+                <button id="btn-start-game" class="rpg-btn p-3 px-8">ENTER WORLD</button>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="game-screen" class="hidden w-full h-full relative bg-gray-900">
+            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+            <div id="floating-text-container" class="absolute top-0 left-0 w-full h-full pointer-events-none z-20"></div>
+
+            <!-- Mobile Specific UI -->
+            <div id="mobile-ui" class="hidden absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                <!-- Joystick -->
+                <div id="joystick-container" class="absolute bottom-8 left-8 w-32 h-32 bg-gray-800/60 rounded-full border-2 border-gray-500 pointer-events-auto" style="touch-action: none;">
+                    <div id="joystick-knob" class="absolute top-1/2 left-1/2 w-12 h-12 bg-white/80 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,255,255,0.6)]"></div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="absolute bottom-8 right-8 flex gap-4 pointer-events-auto items-end">
+                    <!-- Skills -->
+                    <div class="flex flex-col gap-3 pb-2">
+                        <button id="btn-m-s1" class="mobile-btn btn-skill">1</button>
+                        <button id="btn-m-s2" class="mobile-btn btn-skill">2</button>
+                        <button id="btn-m-s3" class="mobile-btn btn-skill">3</button>
+                    </div>
+                    <!-- Main Actions -->
+                    <div class="flex flex-col gap-4 items-center">
+                        <button id="btn-m-interact" class="mobile-btn bg-gray-600 border-gray-400 w-12 h-12 text-xs">✋</button>
+                        <div class="flex gap-4 items-end">
+                            <button id="btn-m-shield" class="mobile-btn btn-shield">🛡️</button>
+                            <button id="btn-m-atk" class="mobile-btn btn-atk">⚔️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Right Mobile Buttons -->
+                <div class="absolute top-20 right-4 flex flex-col gap-2 pointer-events-auto">
+                    <button id="btn-m-chat" class="rpg-btn p-2 text-[10px] w-12 h-12 rounded-full flex justify-center items-center">💬</button>
+                    <button id="btn-m-inv" class="rpg-btn p-2 text-[10px] w-12 h-12 rounded-full flex justify-center items-center">🎒</button>
+                    <button id="btn-m-quest" class="rpg-btn p-2 text-[10px] w-12 h-12 rounded-full flex justify-center items-center">📜</button>
+                    <button id="btn-m-menu" class="rpg-btn p-2 text-[10px] w-12 h-12 rounded-full flex justify-center items-center">⚙️</button>
+                </div>
+            </div>
+
+            <!-- Desktop/Universal UI Overlay -->
+            <div id="game-ui" class="flex flex-col justify-between p-2 md:p-4 z-40">
+                <!-- Top HUD -->
+                <div class="flex justify-between items-start">
+                    <div class="rpg-panel p-2 md:p-3 ui-element w-56 md:w-72 flex flex-col gap-1 md:gap-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span id="hud-name" class="text-[10px] md:text-xs text-yellow-400">Player</span>
+                            <span id="hud-lvl" class="text-[10px] md:text-xs">Lv.1</span>
+                        </div>
+                        <div class="bar-container rounded h-3 md:h-5"><div id="bar-hp" class="hp-bar w-full rounded"></div><span class="bar-text" id="txt-hp">100/100</span></div>
+                        <div class="bar-container rounded h-3 md:h-5"><div id="bar-mp" class="mp-bar w-full rounded"></div><span class="bar-text" id="txt-mp">50/50</span></div>
+                        <div class="bar-container rounded h-2 md:h-3 mt-1"><div id="bar-exp" class="exp-bar w-0 rounded"></div><span class="bar-text text-[6px] md:text-[8px]" id="txt-exp">0%</span></div>
+                    </div>
+
+                    <div class="flex flex-col items-end gap-2">
+                        <!-- Invite Code Display -->
+                        <div class="rpg-panel p-2 ui-element flex flex-col items-center border-blue-500">
+                            <div class="text-[8px] md:text-[10px] text-blue-300 mb-1">ROOM CODE</div>
+                            <div id="hud-invite-code" class="text-sm md:text-lg text-white tracking-widest font-bold">------</div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <div class="rpg-panel p-2 ui-element text-center min-w-[60px]">
+                                <div class="text-[8px] md:text-[10px] text-gray-400">FLOOR</div>
+                                <div id="hud-floor" class="text-sm md:text-base text-yellow-500">1</div>
+                            </div>
+                            <div class="rpg-panel p-2 ui-element text-[10px] md:text-xs flex items-center gap-2">
+                                <span>🪙</span> <span id="hud-gold">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="hidden md:flex gap-1 md:gap-2">
+                            <button id="btn-inv" class="rpg-btn p-1 md:p-2 text-[8px] md:text-[10px] ui-element">INV (I)</button>
+                            <button id="btn-quest" class="rpg-btn p-1 md:p-2 text-[8px] md:text-[10px] ui-element">QUEST</button>
+                            <button id="btn-menu" class="rpg-btn p-1 md:p-2 text-[8px] md:text-[10px] ui-element">MENU (ESC)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom HUD -->
+                <div class="flex justify-between items-end pb-2 md:pb-0">
+                    <div id="chat-box" class="rpg-panel w-64 md:w-80 h-32 md:h-48 ui-element flex flex-col pointer-events-auto bg-black/80">
+                        <div id="chat-messages" class="flex-1 overflow-y-auto p-2 text-[8px] md:text-[10px] flex flex-col gap-1"></div>
+                        <input type="text" id="chat-input" placeholder="Press Enter to chat..." class="rpg-input p-2 text-[8px] md:text-[10px] border-t-0 border-l-0 border-r-0">
+                    </div>
+
+                    <!-- Desktop Skills Hint -->
+                    <div class="hidden md:flex gap-2 ui-element bg-black/70 p-2 rounded-lg border border-gray-700">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon flex items-center justify-center text-xs" id="skill-1"><span id="s1-icon">1</span><div id="s1-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">1</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon flex items-center justify-center text-xs" id="skill-2"><span id="s2-icon">2</span><div id="s2-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">2</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon flex items-center justify-center text-xs" id="skill-3"><span id="s3-icon">3</span><div id="s3-cd" class="skill-cooldown"></div></div>
+                            <span class="text-[8px] text-gray-400">3</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 ml-2 border-l border-gray-600 pl-2">
+                            <div class="skill-icon flex items-center justify-center text-xs border-yellow-500 bg-gray-800">🛡️</div>
+                            <span class="text-[8px] text-gray-400">J</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="skill-icon flex items-center justify-center text-xs border-red-500 bg-gray-800">⚔️</div>
+                            <span class="text-[8px] text-gray-400">K</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 ml-2 border-l border-gray-600 pl-2">
+                            <div class="skill-icon flex items-center justify-center text-xs border-gray-500 bg-gray-800">✋</div>
+                            <span class="text-[8px] text-gray-400">SPACE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modals -->
+            <div id="modal-inv" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-4 w-[90%] md:w-96 hidden z-50 ui-element">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
+                    <h3 class="text-sm text-yellow-500">INVENTORY</h3>
+                    <button class="text-red-500 hover:text-red-300 text-lg p-2" onclick="document.getElementById('modal-inv').classList.add('hidden')">×</button>
+                </div>
+                <div class="grid grid-cols-5 md:grid-cols-6 gap-2" id="inv-grid"></div>
+            </div>
+
+            <div id="modal-quest" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-4 w-[90%] md:w-96 hidden z-50 ui-element">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
+                    <h3 class="text-sm text-yellow-500">QUESTS</h3>
+                    <button class="text-red-500 hover:text-red-300 text-lg p-2" onclick="document.getElementById('modal-quest').classList.add('hidden')">×</button>
+                </div>
+                <div id="quest-list" class="flex flex-col gap-2 text-xs max-h-[50vh] overflow-y-auto"></div>
+            </div>
+
+            <div id="modal-menu" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rpg-panel p-6 w-72 hidden z-50 ui-element flex flex-col gap-4 text-center">
+                <h3 class="text-lg text-yellow-500 border-b border-gray-600 pb-2">SYSTEM</h3>
+                <div class="bg-black/50 p-2 rounded border border-gray-600 mb-2">
+                    <p class="text-[8px] text-gray-400 mb-1">ROOM INVITE CODE</p>
+                    <p id="menu-invite-code" class="text-lg text-white tracking-widest">------</p>
+                </div>
+                <button id="btn-save-exit" class="rpg-btn p-3 text-xs">SAVE & LEAVE ROOM</button>
+                <button onclick="document.getElementById('modal-menu').classList.add('hidden')" class="rpg-btn p-3 text-xs bg-gray-700 border-gray-500">RESUME</button>
+            </div>
+
+            <div id="death-screen" class="absolute top-0 left-0 w-full h-full bg-black/90 hidden z-50 flex flex-col justify-center items-center pointer-events-auto">
+                <h1 class="text-4xl md:text-6xl text-red-600 mb-8" style="text-shadow: 2px 2px 0 #000;">YOU DIED</h1>
+                <button id="btn-respawn" class="rpg-btn px-8 py-4 text-sm md:text-xl">RESPAWN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & GAME LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { getDatabase, ref, set, onValue, onDisconnect, remove, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js";
+
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyBySp5ie_a8xhoxFZWM9KEKWUmyG-7J4CM",
+            authDomain: "manzgame-13509.firebaseapp.com",
+            projectId: "manzgame-13509",
+            storageBucket: "manzgame-13509.firebasestorage.app",
+            messagingSenderId: "237567563134",
+            appId: "1:237567563134:web:6edd240395f61d09348f2f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        // GLOBAL STATE
+        let currentUser = null;
+        let currentInviteCode = null;
+        let playerRef = null; 
+        let otherPlayers = {};
+        let gameLoopId;
+        let isGameRunning = false;
+        let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        const imgKnight = new Image(); imgKnight.src = "https://i.ibb.co.com/7d4SgNtS/b59766b757572f2602678f3e274eacd9-removebg-preview.png";
+        const imgMage = new Image(); imgMage.src = "https://i.ibb.co.com/XxmBdS4t/Avatars-In-Pixels-removebg-preview.png";
+
+        const screens = {
+            auth: document.getElementById('auth-screen'),
+            lobby: document.getElementById('lobby-screen'),
+            char: document.getElementById('char-screen'),
+            game: document.getElementById('game-screen')
+        };
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        if (isMobile) {
+            document.getElementById('mobile-ui').classList.remove('hidden');
+            document.getElementById('chat-box').style.width = '200px';
+            document.getElementById('chat-box').style.height = '100px';
+            document.getElementById('chat-box').style.opacity = '0.7';
+        }
+
+        // AUTHENTICATION
+        const authMsg = document.getElementById('auth-msg');
+
+        document.getElementById('btn-google-login').addEventListener('click', async () => {
+            try { authMsg.innerText = "Authenticating..."; await signInWithPopup(auth, provider); } 
+            catch (error) { authMsg.innerText = error.message; }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('player-email-display').innerText = user.displayName || user.email;
+                showScreen('lobby');
+            } else {
+                currentUser = null; showScreen('auth'); authMsg.innerText = "";
+            }
+        });
+
+        // MULTIPLAYER INVITE CODE SYSTEM
+        function generateInviteCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = '';
+            for(let i=0; i<6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            return code;
+        }
+
+        document.getElementById('btn-create-world').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-create-world');
+            const msg = document.getElementById('create-msg');
+            let name = document.getElementById('new-world-name').value.trim() || `${currentUser.displayName}'s World`;
+            
+            btn.disabled = true; msg.innerText = "Creating Room...";
+            
+            let code = generateInviteCode();
+            let unique = false;
+            while(!unique) {
+                const snap = await getDoc(doc(db, "worlds", code));
+                if(!snap.exists()) unique = true;
+                else code = generateInviteCode();
+            }
+
+            try {
+                await setDoc(doc(db, "worlds", code), {
+                    name: name, owner: currentUser.uid, createdAt: Date.now(), highestFloor: 1
+                });
+                joinWorld(code);
+            } catch (e) {
+                msg.innerText = "Error creating world.";
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-join-world').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-join-world');
+            const msg = document.getElementById('join-msg');
+            let code = document.getElementById('join-invite-code').value.trim().toUpperCase();
+            
+            if(code.length !== 6) { msg.innerText = "Code must be 6 characters."; return; }
+            
+            btn.disabled = true; msg.innerText = "Searching Room...";
+
+            try {
+                const snap = await getDoc(doc(db, "worlds", code));
+                if(snap.exists()) {
+                    joinWorld(code);
+                } else {
+                    msg.innerText = "Room not found. Invalid Code.";
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                msg.innerText = "Error connecting to server.";
+                btn.disabled = false;
+            }
+        });
+
+        async function joinWorld(inviteCode) {
+            currentInviteCode = inviteCode;
+            document.getElementById('hud-invite-code').innerText = inviteCode;
+            document.getElementById('menu-invite-code').innerText = inviteCode;
+            
+            const playerDoc = await getDoc(doc(db, `worlds/${inviteCode}/players/${currentUser.uid}`));
+            if (playerDoc.exists()) {
+                loadGameData(playerDoc.data());
+                startGame();
+            } else {
+                showScreen('char');
+            }
+        }
+
+        // CHARACTER CREATION
+        let selectedClass = null;
+        document.getElementById('select-knight').addEventListener('click', (e) => {
+            selectedClass = 'knight';
+            e.currentTarget.classList.add('border-yellow-500');
+            document.getElementById('select-mage').classList.remove('border-yellow-500');
+        });
+        document.getElementById('select-mage').addEventListener('click', (e) => {
+            selectedClass = 'mage';
+            e.currentTarget.classList.add('border-yellow-500');
+            document.getElementById('select-knight').classList.remove('border-yellow-500');
+        });
+
+        document.getElementById('btn-start-game').addEventListener('click', async () => {
+            let name = document.getElementById('char-name').value.trim();
+            if(!name) name = currentUser.displayName ? currentUser.displayName.split(' ')[0] : "Player";
+            if (!selectedClass) selectedClass = 'knight';
+
+            const initialData = {
+                name: name, charClass: selectedClass, level: 1, exp: 0, gold: 0,
+                hp: selectedClass === 'knight' ? 150 : 100, maxHp: selectedClass === 'knight' ? 150 : 100,
+                mp: selectedClass === 'knight' ? 50 : 150, maxMp: selectedClass === 'knight' ? 50 : 150,
+                x: 0, y: 0, floor: 1, inventory: new Array(24).fill(null),
+                quests: [{ id: 1, desc: "Kill 5 Slimes", target: 5, progress: 0, type: 'kill', monster: 'Slime', reward: 50 }]
+            };
+
+            await setDoc(doc(db, `worlds/${currentInviteCode}/players/${currentUser.uid}`), initialData);
+            loadGameData(initialData);
+            startGame();
+        });
+
+        // GAME ENGINE
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let GAME = {
+            player: null, camera: { x: 0, y: 0 }, keys: {},
+            monsters: [], particles: [], map: { width: 3000, height: 3000, tileSize: 64 }, floor: 1
+        };
+
+        const CLASSES = {
+            knight: {
+                img: imgKnight, speed: 4, atk: 15, def: 10,
+                skills: [
+                    { name: 'Slash', cd: 2000, cost: 5, icon: '🗡️', color: '#fff', radius: 70, dmgMult: 1.5 },
+                    { name: 'Smash', cd: 5000, cost: 15, icon: '💥', color: '#8B4513', radius: 120, dmgMult: 2.5 },
+                    { name: 'Warcry', cd: 10000, cost: 20, icon: '🔥', color: '#ff4400', isBuff: true, duration: 5000 }
+                ]
+            },
+            mage: {
+                img: imgMage, speed: 3.5, atk: 10, def: 5,
+                skills: [
+                    { name: 'Heal', cd: 6000, cost: 30, icon: '💚', color: '#00FF00', isHeal: true, amount: 50 },
+                    { name: 'Burst', cd: 3000, cost: 15, icon: '✨', color: '#00FFFF', radius: 100, dmgMult: 2.0 },
+                    { name: 'Blessing', cd: 15000, cost: 50, icon: '🌟', color: '#FFD700', isBuff: true, duration: 8000 }
+                ]
+            }
+        };
+
+        const MONSTER_TYPES = [
+            { name: 'Slime', color: '#00FF00', hp: 30, atk: 5, speed: 1.5, exp: 10, gold: 5, size: 20 },
+            { name: 'Skeleton', color: '#DDDDDD', hp: 50, atk: 10, speed: 2.0, exp: 25, gold: 12, size: 25 },
+            { name: 'Goblin', color: '#228B22', hp: 40, atk: 15, speed: 2.5, exp: 20, gold: 10, size: 22 },
+            { name: 'Boss', color: '#ff0000', hp: 250, atk: 30, speed: 1.8, exp: 150, gold: 100, size: 35, isBoss: true }
+        ];
+
+        // MOBILE JOYSTICK
+        let joyX = 0, joyY = 0;
+        const joyContainer = document.getElementById('joystick-container');
+        const joyKnob = document.getElementById('joystick-knob');
+
+        if(isMobile) {
+            joyContainer.addEventListener('touchstart', handleTouch, {passive: false});
+            joyContainer.addEventListener('touchmove', handleTouch, {passive: false});
+            joyContainer.addEventListener('touchend', releaseTouch, {passive: false});
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.targetTouches[0];
+            const rect = joyContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const maxDist = rect.width / 2;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+            joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            joyX = dx / maxDist; joyY = dy / maxDist;
+        }
+        function releaseTouch(e) {
+            e.preventDefault();
+            joyKnob.style.transform = `translate(-50%, -50%)`;
+            joyX = 0; joyY = 0;
+        }
+
+        class Player {
+            constructor(data) {
+                Object.assign(this, data);
+                this.width = 48; this.height = 48;
+                this.classData = CLASSES[this.charClass];
+                this.lastAttack = 0; this.skillCds = [0, 0, 0];
+                this.buffs = { warcry: 0, blessing: 0 };
+                this.isDead = false; this.isBlocking = false;
+                this.lastAction = ''; this.actionTime = 0;
+                this.chatMsg = ''; this.chatTime = 0;
+                this.spacePressed = false;
+            }
+
+            update() {
+                if (this.isDead) return;
+
+                this.isBlocking = GAME.keys['j'] || GAME.keys['J'];
+
+                let dx = 0, dy = 0;
+                if (GAME.keys['w'] || GAME.keys['W']) dy -= 1;
+                if (GAME.keys['s'] || GAME.keys['S']) dy += 1;
+                if (GAME.keys['a'] || GAME.keys['A']) dx -= 1;
+                if (GAME.keys['d'] || GAME.keys['D']) dx += 1;
+
+                if (joyX !== 0 || joyY !== 0) { dx = joyX; dy = joyY; }
+
+                if (dx !== 0 || dy !== 0) {
+                    const length = Math.hypot(dx, dy);
+                    dx /= length; dy /= length;
+                }
+
+                let speed = this.classData.speed;
+                if (this.buffs.blessing > Date.now()) speed *= 1.3;
+                if (this.isBlocking) speed *= 0.4; // Slower when shielding
+
+                this.x += dx * speed; this.y += dy * speed;
+                this.x = Math.max(-GAME.map.width/2, Math.min(GAME.map.width/2, this.x));
+                this.y = Math.max(-GAME.map.height/2, Math.min(GAME.map.height/2, this.y));
+
+                // Actions (K for Attack)
+                if ((GAME.keys['k'] || GAME.keys['K']) && Date.now() - this.lastAttack > 400 && !this.isBlocking) this.basicAttack();
+                if (GAME.keys['1'] && !this.isBlocking) this.useSkill(0);
+                if (GAME.keys['2'] && !this.isBlocking) this.useSkill(1);
+                if (GAME.keys['3'] && !this.isBlocking) this.useSkill(2);
+
+                // Interact (Space)
+                if (GAME.keys[' '] && !this.spacePressed) {
+                    this.spacePressed = true;
+                    if (GAME.monsters.length === 0 && Math.hypot(this.x, this.y) < 60) {
+                        GAME.floor++; generateFloor(); saveGameData();
+                    }
+                }
+                if (!GAME.keys[' ']) this.spacePressed = false;
+
+                updateHUD();
+                syncMultiplayer();
+            }
+
+            draw(ctx) {
+                if (this.isDead) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                if (this.isBlocking) {
+                    ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); 
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.4)'; ctx.fill();
+                    ctx.strokeStyle = '#FFD700'; ctx.lineWidth=3; ctx.stroke();
+                }
+                if (this.buffs.warcry > Date.now()) {
+                    ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2); ctx.strokeStyle = '#ff4400'; ctx.lineWidth=3; ctx.stroke();
+                }
+
+                if (this.classData.img.complete) {
+                    const bob = (joyX!==0 || joyY!==0 || GAME.keys['w']||GAME.keys['a']||GAME.keys['s']||GAME.keys['d']) ? Math.sin(Date.now() / 120) * 4 : 0;
+                    ctx.drawImage(this.classData.img, -this.width/2, -this.height/2 + bob, this.width, this.height);
+                } else {
+                    ctx.fillStyle = this.charClass === 'knight' ? '#ff6666' : '#6666ff';
+                    ctx.fillRect(-20, -20, 40, 40);
+                }
+
+                ctx.fillStyle = 'white'; ctx.font = '10px "Press Start 2P"'; ctx.textAlign = 'center';
+                ctx.fillText(this.name, 0, -this.height/2 - 10);
+                ctx.restore();
+
+                if (this.chatTime && Date.now() - this.chatTime < 4000) {
+                    drawBubble(ctx, this.chatMsg, this.x, this.y - 50);
+                }
+            }
+
+            basicAttack() {
+                this.lastAttack = Date.now();
+                this.lastAction = 'attack'; this.actionTime = Date.now();
+                syncMultiplayer(true);
+                createParticle(this.x, this.y, this.charClass === 'knight' ? '#fff' : '#00f', 'slash');
+                
+                GAME.monsters.forEach(m => {
+                    if (Math.hypot(this.x - m.x, this.y - m.y) < 70) {
+                        m.takeDamage(this.classData.atk + (this.level * 2));
+                    }
+                });
+            }
+
+            useSkill(index) {
+                const skill = this.classData.skills[index];
+                if (Date.now() < this.skillCds[index] || this.mp < skill.cost) return;
+
+                this.mp -= skill.cost;
+                this.skillCds[index] = Date.now() + skill.cd;
+                this.lastAction = 'skill_' + index; this.actionTime = Date.now();
+                syncMultiplayer(true);
+                updateSkillUI();
+
+                if (skill.isBuff) {
+                    if (skill.name === 'Warcry') this.buffs.warcry = Date.now() + skill.duration;
+                    if (skill.name === 'Blessing') this.buffs.blessing = Date.now() + skill.duration;
+                    createParticle(this.x, this.y, skill.color, 'nova');
+                } else if (skill.isHeal) {
+                    this.heal(skill.amount + (this.level * 5));
+                    createParticle(this.x, this.y, skill.color, 'heal');
+                } else {
+                    createParticle(this.x, this.y, skill.color, 'aoe', skill.radius);
+                    GAME.monsters.forEach(m => {
+                        if (Math.hypot(this.x - m.x, this.y - m.y) < skill.radius) {
+                            m.takeDamage(this.classData.atk * skill.dmgMult);
+                        }
+                    });
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.isDead) return;
+                let dmg = amount - (this.classData.def / 2);
+                if (this.isBlocking) dmg *= 0.1; // 90% damage reduction on shield
+                dmg = Math.max(1, Math.floor(dmg));
+                
+                this.hp -= dmg;
+                spawnFloatingText(this.x, this.y, `-${dmg}`, '#ff0000');
+                if (this.hp <= 0) { this.hp = 0; this.die(); }
+            }
+
+            heal(amount) {
+                this.hp = Math.min(this.maxHp, this.hp + amount);
+                spawnFloatingText(this.x, this.y, `+${amount}`, '#00ff00');
+            }
+
+            die() {
+                this.isDead = true;
+                document.getElementById('death-screen').classList.remove('hidden');
+            }
+
+            gainExp(amount) {
+                this.exp += amount;
+                const needed = this.level * 100;
+                if (this.exp >= needed) {
+                    this.exp -= needed; this.level++;
+                    this.maxHp += 20; this.hp = this.maxHp;
+                    this.maxMp += 10; this.mp = this.maxMp;
+                    spawnFloatingText(this.x, this.y - 40, "LEVEL UP!", '#FFD700');
+                    saveGameData(); 
+                }
+            }
+
+            updateQuest(type, targetName) {
+                let updated = false;
+                this.quests.forEach(q => {
+                    if (q.type === type && (q.monster === targetName || targetName === 'Boss') && q.progress < q.target) {
+                        q.progress++; updated = true;
+                        if (q.progress >= q.target) {
+                            this.gold += q.reward; this.gainExp(q.reward * 2);
+                            spawnFloatingText(this.x, this.y, "Quest Complete!", '#FFD700');
+                            q.target = Math.floor(Math.random() * 5) + 5; q.progress = 0;
+                            const mType = MONSTER_TYPES[Math.floor(Math.random() * 3)].name;
+                            q.monster = mType; q.desc = `Kill ${q.target} ${mType}s`;
+                        }
+                    }
+                });
+                if(updated) updateQuestUI();
+            }
+        }
+
+        class Monster {
+            constructor(x, y, floor) {
+                this.x = x; this.y = y;
+                const isBossFloor = floor % 5 === 0;
+                let type = (isBossFloor && Math.random() < 0.3) ? MONSTER_TYPES[3] : MONSTER_TYPES[Math.floor(Math.random() * 3)];
+                const mult = 1 + (floor * 0.2);
+                this.name = type.name; this.color = type.color; this.size = type.size;
+                this.maxHp = Math.floor(type.hp * mult); this.hp = this.maxHp;
+                this.atk = Math.floor(type.atk * mult); this.speed = type.speed;
+                this.exp = Math.floor(type.exp * mult); this.gold = Math.floor(type.gold * mult);
+            }
+            update() {
+                if (GAME.player.isDead) return;
+                const dx = GAME.player.x - this.x, dy = GAME.player.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 600 && dist > this.size + 15) {
+                    this.x += (dx / dist) * this.speed; this.y += (dy / dist) * this.speed;
+                } else if (dist <= this.size + 15 && Math.random() < 0.04) {
+                    GAME.player.takeDamage(this.atk);
+                    createParticle(GAME.player.x, GAME.player.y, '#ff0000', 'hit');
+                }
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - this.size - 10, 30, 4);
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 15, this.y - this.size - 10, 30 * (this.hp/this.maxHp), 4);
+            }
+            takeDamage(amount) {
+                this.hp -= amount;
+                spawnFloatingText(this.x, this.y, Math.floor(amount), '#fff');
+                if (this.hp <= 0) {
+                    GAME.player.gainExp(this.exp); GAME.player.gold += this.gold;
+                    GAME.player.updateQuest('kill', this.name);
+                    if(Math.random() < 0.3) addToInventory(Math.random() > 0.5 ? 'HP Potion' : 'MP Potion');
+                }
+            }
+        }
+
+        function createParticle(x, y, color, type, radius=0) {
+            GAME.particles.push({ x, y, color, type, radius, life: 20, maxLife: 20 });
+        }
+
+        function spawnFloatingText(x, y, text, color) {
+            const screenX = canvas.width/2 + (x - GAME.camera.x);
+            const screenY = canvas.height/2 + (y - GAME.camera.y);
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.style.left = `${screenX}px`; el.style.top = `${screenY}px`; el.style.color = color;
+            el.innerText = text;
+            document.getElementById('floating-text-container').appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function drawBubble(ctx, text, x, y) {
+            if(!text) return;
+            ctx.save(); ctx.font = '10px "Press Start 2P"';
+            const w = ctx.measureText(text).width + 20; const h = 24;
+            ctx.translate(x, y);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.rect(-w/2, -h - 10, w, h); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(6, -10); ctx.lineTo(0, -2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(5, -10); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 0, -h/2 - 10);
+            ctx.restore();
+        }
+
+        function drawTrackingArrow(ctx, targetX, targetY, color) {
+            const dx = targetX - GAME.camera.x, dy = targetY - GAME.camera.y;
+            const halfW = canvas.width / 2, halfH = canvas.height / 2;
+            
+            // Only draw if target is off-screen
+            if (Math.abs(dx) < halfW - 30 && Math.abs(dy) < halfH - 30) return;
+            
+            const angle = Math.atan2(dy, dx);
+            let arrowX = dx, arrowY = dy;
+            const bX = halfW - 40, bY = halfH - 40;
+            
+            if (Math.abs(dx) > bX || Math.abs(dy) > bY) {
+                const slope = dy / dx;
+                if (Math.abs(slope) > bY / bX) {
+                    arrowY = dy > 0 ? bY : -bY; arrowX = arrowY / slope;
+                } else {
+                    arrowX = dx > 0 ? bX : -bX; arrowY = arrowX * slope;
+                }
+            }
+            
+            ctx.save();
+            ctx.translate(canvas.width/2 + arrowX, canvas.height/2 + arrowY);
+            ctx.rotate(angle);
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 150) * 0.4;
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.restore();
+        }
+
+        function loadGameData(data) {
+            GAME.player = new Player(data);
+            GAME.floor = data.floor || 1;
+            updateHUD(); updateSkillUI(); updateQuestUI(); generateFloor();
+        }
+
+        async function saveGameData() {
+            if (!GAME.player || !currentInviteCode) return;
+            const p = GAME.player;
+            try {
+                await updateDoc(doc(db, `worlds/${currentInviteCode}/players/${currentUser.uid}`), {
+                    name: p.name, charClass: p.charClass, level: p.level, exp: p.exp, gold: p.gold,
+                    hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp,
+                    x: p.x, y: p.y, floor: GAME.floor, quests: p.quests, inventory: p.inventory
+                });
+            } catch (e) { console.error("Save failed", e); }
+        }
+
+        function generateFloor() {
+            GAME.monsters = [];
+            const num = 10 + Math.floor(GAME.floor * 1.5);
+            for (let i = 0; i < num; i++) {
+                GAME.monsters.push(new Monster((Math.random() - 0.5) * GAME.map.width * 0.8, (Math.random() - 0.5) * GAME.map.height * 0.8, GAME.floor));
+            }
+            document.getElementById('hud-floor').innerText = GAME.floor;
+            spawnFloatingText(GAME.player.x, GAME.player.y - 50, `FLOOR ${GAME.floor}`, '#FFD700');
+        }
+
+        function addToInventory(item) {
+            const idx = GAME.player.inventory.findIndex(x => x === null);
+            if (idx !== -1) {
+                GAME.player.inventory[idx] = item;
+                spawnFloatingText(GAME.player.x, GAME.player.y, `+${item}`, '#fff');
+                renderInventory();
+            }
+        }
+
+        // REAL MULTIPLAYER & CHAT SYNC (RTDB)
+        let lastSyncTime = 0;
+        function setupMultiplayer() {
+            if (!currentInviteCode) return;
+            
+            // Player Sync
+            playerRef = ref(rtdb, `worlds/${currentInviteCode}/players/${currentUser.uid}`);
+            onDisconnect(playerRef).remove();
+
+            onValue(ref(rtdb, `worlds/${currentInviteCode}/players`), (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    for (const uid in data) {
+                        if (uid !== currentUser.uid) {
+                            if (!otherPlayers[uid]) otherPlayers[uid] = {};
+                            Object.assign(otherPlayers[uid], data[uid]);
+                        }
+                    }
+                    for (const uid in otherPlayers) { if (!data[uid]) delete otherPlayers[uid]; }
+                } else { otherPlayers = {}; }
+            });
+
+            // Firebase Chat System (Proper Collection Structure via RTDB push)
+            const chatsRef = ref(rtdb, `worlds/${currentInviteCode}/chats`);
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = '';
+            
+            onChildAdded(chatsRef, (snapshot) => {
+                const msg = snapshot.val();
+                if(!msg) return;
+                
+                // Add to Chat Box
+                chatBox.innerHTML += `<div><span class="text-yellow-400">${msg.name}:</span> <span class="text-white">${msg.text}</span></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Show Bubble above head
+                if (msg.uid === currentUser.uid) {
+                    GAME.player.chatMsg = msg.text;
+                    GAME.player.chatTime = Date.now();
+                } else if (otherPlayers[msg.uid]) {
+                    otherPlayers[msg.uid].chatMsg = msg.text;
+                    otherPlayers[msg.uid].chatTime = Date.now();
+                }
+            });
+        }
+
+        function syncMultiplayer(force = false) {
+            if (!playerRef) return;
+            const now = Date.now();
+            // High frequency sync for smooth movement (50ms)
+            if (force || now - lastSyncTime > 50) { 
+                set(playerRef, {
+                    x: GAME.player.x, y: GAME.player.y, name: GAME.player.name, charClass: GAME.player.charClass,
+                    hp: GAME.player.hp, maxHp: GAME.player.maxHp, isBlocking: GAME.player.isBlocking,
+                    lastAction: GAME.player.lastAction, actionTime: GAME.player.actionTime, timestamp: now
+                });
+                lastSyncTime = now;
+            }
+        }
+
+        function sendChat(text) {
+            if(!text || text.trim() === '') return;
+            // Push to Firebase Chats Collection
+            const chatsRef = ref(rtdb, `worlds/${currentInviteCode}/chats`);
+            push(chatsRef, {
+                uid: currentUser.uid,
+                name: GAME.player.name,
+                text: text.trim(),
+                timestamp: Date.now()
+            });
+        }
+
+        // UI UPDATES
+        function updateHUD() {
+            const p = GAME.player;
+            document.getElementById('hud-name').innerText = p.name;
+            document.getElementById('hud-lvl').innerText = `Lv.${p.level}`;
+            document.getElementById('hud-gold').innerText = p.gold;
+            document.getElementById('bar-hp').style.width = `${(p.hp/p.maxHp)*100}%`;
+            document.getElementById('txt-hp').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
+            document.getElementById('bar-mp').style.width = `${(p.mp/p.maxMp)*100}%`;
+            document.getElementById('txt-mp').innerText = `${Math.floor(p.mp)}/${p.maxMp}`;
+            const expN = p.level * 100;
+            document.getElementById('bar-exp').style.width = `${(p.exp/expN)*100}%`;
+            document.getElementById('txt-exp').innerText = `${Math.floor((p.exp/expN)*100)}%`;
+        }
+
+        function updateSkillUI() {
+            for(let i=0; i<3; i++) {
+                const cdEl = document.getElementById(`s${i+1}-cd`);
+                const rem = GAME.player.skillCds[i] - Date.now();
+                if(rem > 0) { cdEl.style.display = 'flex'; cdEl.innerText = (rem/1000).toFixed(1); } 
+                else { cdEl.style.display = 'none'; }
+            }
+        }
+
+        function updateQuestUI() {
+            const list = document.getElementById('quest-list');
+            list.innerHTML = '';
+            GAME.player.quests.forEach(q => {
+                list.innerHTML += `<div class="border border-gray-600 p-2 bg-gray-800 rounded"><div class="text-yellow-400 mb-1">${q.desc}</div><div class="flex justify-between items-center"><span class="text-gray-400">${q.progress} / ${q.target}</span><span class="text-yellow-500">🪙 ${q.reward}</span></div></div>`;
+            });
+        }
+
+        function renderInventory() {
+            const grid = document.getElementById('inv-grid');
+            grid.innerHTML = '';
+            GAME.player.inventory.forEach((item, idx) => {
+                const slot = document.createElement('div');
+                slot.className = 'inv-slot text-lg cursor-pointer hover:border-yellow-500 transition-colors';
+                if(item) { slot.innerHTML = item.includes('HP') ? '❤️' : '💧'; slot.onclick = () => useItem(idx); }
+                grid.appendChild(slot);
+            });
+        }
+
+        function useItem(index) {
+            const item = GAME.player.inventory[index];
+            if(!item) return;
+            if(item === 'HP Potion') GAME.player.heal(50);
+            if(item === 'MP Potion') GAME.player.mp = Math.min(GAME.player.maxMp, GAME.player.mp + 50);
+            GAME.player.inventory[index] = null; renderInventory();
+        }
+
+        // CONTROLS
+        window.addEventListener('keydown', e => { 
+            if (e.key === 'Enter') {
+                const ci = document.getElementById('chat-input');
+                if (document.activeElement === ci) {
+                    sendChat(ci.value); ci.value = ''; ci.blur();
+                } else { ci.focus(); }
+            } else if (e.key === 'Escape') {
+                document.getElementById('btn-menu').click();
+            } else if (document.activeElement !== document.getElementById('chat-input')) {
+                GAME.keys[e.key.toLowerCase()] = true; 
+            }
+        });
+        window.addEventListener('keyup', e => { GAME.keys[e.key.toLowerCase()] = false; });
+        document.getElementById('chat-input').addEventListener('keydown', e => e.stopPropagation());
+        
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+        // Mobile Button Binding
+        function setupMobileBtn(id, key) {
+            const btn = document.getElementById(id); if(!btn) return;
+            btn.addEventListener('touchstart', e => { e.preventDefault(); GAME.keys[key] = true; });
+            btn.addEventListener('touchend', e => { e.preventDefault(); GAME.keys[key] = false; });
+        }
+        setupMobileBtn('btn-m-atk', 'k'); setupMobileBtn('btn-m-shield', 'j');
+        setupMobileBtn('btn-m-s1', '1'); setupMobileBtn('btn-m-s2', '2'); setupMobileBtn('btn-m-s3', '3');
+        setupMobileBtn('btn-m-interact', ' ');
+        
+        document.getElementById('btn-m-chat').addEventListener('click', () => {
+            const msg = prompt("Enter chat message:");
+            if(msg) sendChat(msg);
+        });
+        document.getElementById('btn-m-inv').addEventListener('click', () => { document.getElementById('btn-inv').click(); });
+        document.getElementById('btn-m-quest').addEventListener('click', () => { document.getElementById('btn-quest').click(); });
+        document.getElementById('btn-m-menu').addEventListener('click', () => { document.getElementById('btn-menu').click(); });
+
+        // Desktop UI Buttons
+        document.getElementById('btn-inv').addEventListener('click', () => { document.getElementById('modal-inv').classList.toggle('hidden'); renderInventory(); });
+        document.getElementById('btn-quest').addEventListener('click', () => document.getElementById('modal-quest').classList.toggle('hidden'));
+        document.getElementById('btn-menu').addEventListener('click', () => document.getElementById('modal-menu').classList.toggle('hidden'));
+
+        document.getElementById('btn-save-exit').addEventListener('click', async () => {
+            await saveGameData(); isGameRunning = false; cancelAnimationFrame(gameLoopId);
+            if(playerRef) remove(playerRef);
+            document.getElementById('modal-menu').classList.add('hidden');
+            document.getElementById('btn-create-world').disabled = false;
+            document.getElementById('btn-join-world').disabled = false;
+            document.getElementById('create-msg').innerText = "";
+            document.getElementById('join-msg').innerText = "";
+            showScreen('lobby');
+        });
+
+        document.getElementById('btn-respawn').addEventListener('click', () => {
+            GAME.player.isDead = false; GAME.player.hp = GAME.player.maxHp;
+            GAME.floor = 1; GAME.player.x = 0; GAME.player.y = 0;
+            document.getElementById('death-screen').classList.add('hidden');
+            generateFloor();
+        });
+
+        // MAIN LOOP
+        function startGame() {
+            showScreen('game'); canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            setupMultiplayer(); isGameRunning = true;
+            setInterval(() => { if(isGameRunning && !GAME.player.isDead) GAME.player.mp = Math.min(GAME.player.maxMp, GAME.player.mp + 2); }, 1000);
+            setInterval(() => { if(isGameRunning) saveGameData(); }, 30000);
+            gameLoop();
+        }
+
+        function drawMap(ctx) {
+            ctx.fillStyle = '#111827'; ctx.fillRect(-GAME.map.width/2, -GAME.map.height/2, GAME.map.width, GAME.map.height);
+            ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 2; const ts = GAME.map.tileSize;
+            const sX = Math.floor((GAME.camera.x - canvas.width/2)/ts)*ts, sY = Math.floor((GAME.camera.y - canvas.height/2)/ts)*ts;
+            ctx.beginPath();
+            for(let x=sX; x<sX+canvas.width+ts; x+=ts) { ctx.moveTo(x, sY); ctx.lineTo(x, sY+canvas.height+ts); }
+            for(let y=sY; y<sY+canvas.height+ts; y+=ts) { ctx.moveTo(sX, y); ctx.lineTo(sX+canvas.width+ts, y); }
+            ctx.stroke();
+
+            // Portal
+            if (GAME.monsters.length === 0 && !GAME.player.isDead) {
+                ctx.fillStyle = '#8A2BE2'; ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '10px "Press Start 2P"'; ctx.textAlign='center';
+                ctx.fillText("PORTAL (Space)", 0, -50);
+            }
+        }
+
+        function drawOtherPlayers(ctx) {
+            const now = Date.now();
+            for (const uid in otherPlayers) {
+                const p = otherPlayers[uid];
+                if (now - p.timestamp > 5000) continue; // Hide if stale
+                
+                // Interpolation for smooth movement
+                if (p.renderX === undefined) { p.renderX = p.x; p.renderY = p.y; }
+                p.renderX += (p.x - p.renderX) * 0.4; p.renderY += (p.y - p.renderY) * 0.4;
+
+                // Sync Actions
+                if (p.actionTime > (p.localLastActionTime || 0)) {
+                    if (p.lastAction === 'attack') createParticle(p.renderX, p.renderY, p.charClass === 'knight' ? '#fff' : '#00f', 'slash');
+                    else if (p.lastAction.startsWith('skill_')) createParticle(p.renderX, p.renderY, '#00FFFF', 'nova');
+                    p.localLastActionTime = p.actionTime;
+                }
+
+                ctx.save(); ctx.translate(p.renderX, p.renderY);
+                
+                // Sync Shielding
+                if (p.isBlocking) {
+                    ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.fillStyle = 'rgba(255, 215, 0, 0.4)'; ctx.fill();
+                    ctx.strokeStyle = '#FFD700'; ctx.lineWidth=3; ctx.stroke();
+                }
+                
+                const cData = CLASSES[p.charClass];
+                if (cData && cData.img.complete) ctx.drawImage(cData.img, -24, -24, 48, 48);
+                else { ctx.fillStyle = p.charClass === 'knight' ? '#ff6666' : '#6666ff'; ctx.fillRect(-20, -20, 40, 40); }
+                
+                // Health bar
+                ctx.fillStyle = 'red'; ctx.fillRect(-20, -35, 40, 4);
+                ctx.fillStyle = '#00ff00'; ctx.fillRect(-20, -35, 40 * (Math.max(0, p.hp)/p.maxHp), 4);
+                
+                // Name
+                ctx.fillStyle = 'white'; ctx.font = '8px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText(p.name, 0, -42);
+                ctx.restore();
+
+                // Chat Bubble
+                if (p.chatTime && now - p.chatTime < 4000) drawBubble(ctx, p.chatMsg, p.renderX, p.renderY - 50);
+                
+                // Real-time Player Tracking Arrow (Only if off-screen)
+                drawTrackingArrow(ctx, p.renderX, p.renderY, p.charClass === 'knight' ? '#ff6666' : '#6666ff');
+            }
+        }
+
+        function drawParticles(ctx) {
+            for(let i = GAME.particles.length-1; i>=0; i--) {
+                let p = GAME.particles[i]; p.life--;
+                ctx.save(); ctx.translate(p.x, p.y); ctx.globalAlpha = p.life / p.maxLife;
+                if (p.type === 'slash') { ctx.strokeStyle = p.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, 45, -Math.PI/4, Math.PI/4); ctx.stroke(); } 
+                else if (p.type === 'nova') { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(0, 0, (p.maxLife - p.life) * 4, 0, Math.PI*2); ctx.fill(); } 
+                else if (p.type === 'aoe') { ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = p.color; ctx.globalAlpha *= 0.3; ctx.fill(); } 
+                else if (p.type === 'hit') { ctx.fillStyle = p.color; ctx.fillRect(-5, -5 + (p.maxLife-p.life), 10, 10); } 
+                else if (p.type === 'heal') { ctx.fillStyle = p.color; ctx.font = '20px Arial'; ctx.fillText('+', 0, -(p.maxLife-p.life)*2); }
+                ctx.restore();
+                if(p.life <= 0) GAME.particles.splice(i, 1);
+            }
+        }
+
+        function gameLoop() {
+            if (!isGameRunning) return;
+            GAME.player.update();
+            for(let i=GAME.monsters.length-1; i>=0; i--) { GAME.monsters[i].update(); if(GAME.monsters[i].hp <= 0) GAME.monsters.splice(i, 1); }
+            
+            GAME.camera.x += (GAME.player.x - GAME.camera.x) * 0.15; 
+            GAME.camera.y += (GAME.player.y - GAME.camera.y) * 0.15;
+
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(canvas.width/2 - GAME.camera.x, canvas.height/2 - GAME.camera.y);
+
+            drawMap(ctx); 
+            drawOtherPlayers(ctx); // Render other players first so local player is always on top
+            
+            const entities = [GAME.player, ...GAME.monsters].sort((a,b) => a.y - b.y);
+            entities.forEach(e => e.draw(ctx));
+            
+            drawParticles(ctx);
+
+            ctx.restore();
+            updateSkillUI();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
